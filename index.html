@@ -1,0 +1,378 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aide</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- ─── Tab Navigation ─── -->
+        <nav class="tab-bar" id="tab-bar">
+            <button class="tab-btn active" data-tab="chat" id="tab-chat" title="Chat">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/>
+                </svg>
+                <span>Chat</span>
+            </button>
+            <button class="tab-btn" data-tab="scripts" id="tab-scripts" title="Saved Scripts">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                    <polyline points="14 2 14 8 20 8"/>
+                    <line x1="16" y1="13" x2="8" y2="13"/>
+                    <line x1="16" y1="17" x2="8" y2="17"/>
+                </svg>
+                <span>Scripts</span>
+            </button>
+            <button class="tab-btn" data-tab="settings" id="tab-settings" title="Settings">
+                <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                    <circle cx="12" cy="12" r="3"/>
+                    <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+                </svg>
+                <span>Settings</span>
+            </button>
+        </nav>
+
+        <!-- ─── Chat Tab ─── -->
+        <main class="tab-content active" id="view-chat">
+            <div class="chat-messages" id="chat-messages">
+                <div class="chat-welcome" id="chat-welcome">
+                    <div class="welcome-icon">
+                        <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
+                            <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+                        </svg>
+                    </div>
+                    <p class="welcome-title">What would you like to automate?</p>
+                    <p class="welcome-subtitle">Describe your InDesign task in plain language. I'll generate the ExtendScript to do it.</p>
+                    <div class="quick-prompts">
+                        <button class="quick-prompt-btn" data-prompt="Create a 10-page document with A4 size and 12mm margins">New document</button>
+                        <button class="quick-prompt-btn" data-prompt="Add a text frame on page 1 with 'Hello InDesign' in 24pt Arial, centered">Add text</button>
+                        <button class="quick-prompt-btn" data-prompt="Export the document as a high-quality PDF to the Desktop">Export PDF</button>
+                    </div>
+                </div>
+            </div>
+            <div class="chat-input-area" id="chat-input-area">
+                <!-- File attachment indicator -->
+                <div class="attached-file hidden" id="attached-file">
+                    <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span class="attached-file-name" id="attached-file-name"></span>
+                    <button class="attached-file-remove" id="remove-attachment" title="Remove">✕</button>
+                </div>
+                <div class="input-row">
+                    <button class="attach-btn" id="attach-btn" title="Attach file (CSV, TXT)">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <path d="M21.44 11.05l-9.19 9.19a6 6 0 01-8.49-8.49l9.19-9.19a4 4 0 015.66 5.66l-9.2 9.19a2 2 0 01-2.83-2.83l8.49-8.48"/>
+                        </svg>
+                    </button>
+                    <input type="file" id="file-input" accept=".csv,.txt,.tsv,.json" class="hidden">
+                    <textarea id="prompt-input" placeholder="Describe your task..." rows="1"></textarea>
+                    <button id="send-btn" class="send-btn" title="Send (⌘+Enter)"></button>
+                </div>
+                <div class="input-meta">
+                    <div class="model-indicator-wrap" id="chat-model-indicator-wrap" title="Checking...">
+                        <div class="connection-dot" id="chat-connection-dot"></div>
+                        <span class="model-indicator" id="chat-model-indicator">Loading...</span>
+                    </div>
+
+                    <div class="auto-run-wrap" id="auto-run-wrap" title="Automatically run scripts when generated">
+                        <input type="checkbox" id="auto-run-checkbox">
+                        <label for="auto-run-checkbox">Auto Run</label>
+                    </div>
+
+                    <button class="new-chat-btn" id="new-chat-btn" title="New conversation">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <line x1="12" y1="5" x2="12" y2="19"/>
+                            <line x1="5" y1="12" x2="19" y2="12"/>
+                        </svg>
+                        New Chat
+                    </button>
+                </div>
+            </div>
+        </main>
+
+        <!-- ─── Scripts Tab (launcher) ─── -->
+        <main class="tab-content" id="view-scripts">
+            <div class="scripts-toolbar">
+                <div class="scripts-toolbar-left">
+                    <div class="scripts-subtabs" role="tablist">
+                        <button type="button" class="scripts-subtab active" data-scripts-subtab="local" id="scripts-subtab-local" role="tab">Local</button>
+                        <button type="button" class="scripts-subtab" data-scripts-subtab="sets" id="scripts-subtab-sets" role="tab">Sets</button>
+                        <button type="button" class="scripts-subtab" data-scripts-subtab="favs" id="scripts-subtab-favs" role="tab">Favs</button>
+                    </div>
+                </div>
+                <div class="scripts-toolbar-right">
+                    <div class="scripts-search-wrap" role="search">
+                        <input type="text" class="search-input scripts-search-compact" id="scripts-search" placeholder="Search…" title="Search scripts">
+                        <button type="button" class="scripts-search-clear" id="scripts-search-clear" title="Clear search" aria-label="Clear search" disabled>✕</button>
+                    </div>
+                    <button type="button" class="code-action-btn scripts-star-filter-btn" id="scripts-star-filter-btn" title="Show starred only">☆</button>
+                    <button type="button" class="code-action-btn code-action-btn--icon scripts-show-hidden-btn hidden" id="scripts-show-hidden-btn" title="Show hidden scripts">
+                        <svg class="eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
+                            <circle cx="12" cy="12" r="3"></circle>
+                        </svg>
+                        <svg class="eye-off" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                            <path d="M17.94 17.94A10.94 10.94 0 0 1 12 20c-7 0-11-8-11-8a21.86 21.86 0 0 1 5.06-6.88"></path>
+                            <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.88 21.88 0 0 1-3.17 4.62"></path>
+                            <path d="M14.12 14.12a3 3 0 0 1-4.24-4.24"></path>
+                            <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                    <button type="button" class="code-action-btn scripts-view-toggle-btn" id="scripts-view-toggle-btn" title="Toggle compact / expanded view">☰</button>
+                    <button type="button" class="code-action-btn scripts-toolbar-refresh" id="scripts-refresh-btn" title="Refresh list & generate missing descriptions (Ollama)">↻</button>
+                </div>
+            </div>
+            <div class="scripts-list" id="scripts-list">
+                <div class="empty-state" id="scripts-empty">
+                    <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" opacity="0.3">
+                        <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+                        <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <p class="scripts-empty-title">No saved scripts yet</p>
+                    <p class="empty-hint scripts-empty-hint">Scripts you save from chat will appear here</p>
+                </div>
+            </div>
+        </main>
+
+        <!-- ─── Settings Tab ─── -->
+        <main class="tab-content" id="view-settings">
+            <div class="settings-sections">
+                <!-- Provider & model -->
+                <fieldset class="settings-group">
+                    <legend>Provider & model</legend>
+                    <div class="setting-row">
+                        <label for="provider-select">Source</label>
+                        <select id="provider-select">
+                            <option value="ollama">Ollama (Local)</option>
+                            <option value="google">Google Gemini</option>
+                            <option value="openai">OpenAI</option>
+                            <option value="anthropic">Anthropic</option>
+                            <option value="openrouter">OpenRouter</option>
+                            <option value="custom">Custom API</option>
+                        </select>
+                    </div>
+                    <div class="setting-row" id="ollama-host-row">
+                        <label for="ollama-host">Endpoint</label>
+                        <input type="text" id="ollama-host" value="http://localhost:11434" placeholder="http://localhost:11434">
+                    </div>
+                    <div class="setting-row hidden" id="custom-endpoint-row">
+                        <label for="custom-endpoint">API URL</label>
+                        <input type="text" id="custom-endpoint" placeholder="https://api.example.com/v1/chat/completions">
+                    </div>
+                    <div class="setting-row hidden" id="api-key-row">
+                        <label for="api-key">API Key</label>
+                        <div class="key-input-wrap">
+                            <input type="password" id="api-key" placeholder="sk-...">
+                            <button class="icon-btn" id="toggle-key-vis" title="Show/Hide">
+                                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                                    <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/>
+                                    <circle cx="12" cy="12" r="3"/>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <p class="setting-hint hidden" id="provider-hint"></p>
+
+                    <hr class="settings-divider">
+
+                    <div class="setting-row">
+                        <label for="model-select">Model</label>
+                        <select id="model-select">
+                            <option value="">Loading models...</option>
+                        </select>
+                    </div>
+                    <div class="setting-row hidden" id="model-custom-row">
+                        <label for="model-custom">Custom</label>
+                        <div class="override-wrap">
+                            <input type="text" id="model-custom" placeholder="Type model name...">
+                            <button class="clear-btn" id="clear-custom-model" title="Clear custom model" disabled>✕</button>
+                        </div>
+                    </div>
+                    <div class="settings-inline-btns">
+                        <button type="button" class="text-btn" id="refresh-models-btn">↻ Refresh Models</button>
+                        <button type="button" class="text-btn" id="clear-custom-models-list-btn">🗑 Clear Saved Models</button>
+                        <button type="button" class="text-btn" id="test-connection-btn">Test Connection</button>
+                        <span class="test-result" id="test-result"></span>
+                    </div>
+                </fieldset>
+
+                <!-- Script Folders — Step 4 -->
+                <fieldset class="settings-group" id="script-folders-group">
+                    <legend>Script Folders</legend>
+                    <p class="setting-hint">Folders are scanned for .jsx / .js on the <strong>Scripts</strong> tab (Local). Use <strong>↻ Refresh</strong> there to rescan.</p>
+
+
+                    <!-- Additional (user-added) folders -->
+                    <div id="local-scripts-folders-list" class="local-folders-list"></div>
+                </fieldset>
+
+                <!-- Import / Export Settings — Step 8 -->
+                <fieldset class="settings-group" id="import-export-group">
+                    <legend>Import / Export</legend>
+                    <p class="setting-hint">Share your configuration across machines. <strong>API keys are never exported.</strong></p>
+                    <div class="settings-inline-btns">
+                        <button type="button" class="text-btn" id="export-settings-btn">⬇ Export Settings</button>
+                        <button type="button" class="text-btn" id="import-settings-btn">⬆ Import Settings</button>
+                        <input type="file" id="import-settings-file" accept=".json" class="hidden">
+                    </div>
+                    <p class="setting-hint import-export-hint hidden" id="import-export-status"></p>
+                </fieldset>
+
+                <!-- Advanced Settings (collapsible) -->
+                <details class="advanced-settings" id="advanced-settings">
+                    <summary>Advanced Settings</summary>
+                    <div class="advanced-content">
+                        <!-- Temperature -->
+                        <fieldset class="settings-group">
+                            <legend>Temperature</legend>
+                            <div class="setting-row">
+                                <label for="temperature-slider">Randomness</label>
+                                <div class="slider-row">
+                                    <input type="range" id="temperature-slider" min="0" max="100" value="30" step="5">
+                                    <span class="slider-value" id="temperature-value">0.3</span>
+                                </div>
+                            </div>
+                            <p class="setting-hint">Controls randomness of AI responses. Lower = more precise code. Higher = more creative. Applies to all providers. Recommended: 0.1–0.3 for code generation.</p>
+                        </fieldset>
+
+                        <!-- Prompt Modules (opt-out) -->
+                        <fieldset class="settings-group">
+                            <legend>Prompt Modules <span class="module-hint">(unchecked = disabled from system prompt)</span></legend>
+                            <div class="setting-row setting-row--modules" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 4px; margin-bottom: 2px;">
+                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
+                                    <input type="checkbox" id="mod-scriptui" data-mod="scriptui" checked> ScriptUI Dialogs (~300 tokens)
+                                </label>
+                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
+                                    <input type="checkbox" id="mod-menu" data-mod="menu" checked> Menu Commands (~400 tokens)
+                                </label>
+                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
+                                    <input type="checkbox" id="mod-export" data-mod="export" checked> Export / Save (~150 tokens)
+                                </label>
+                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
+                                    <input type="checkbox" id="mod-gradients" data-mod="gradients" checked> Gradients & Effects (~130 tokens)
+                                </label>
+                            </div>
+                            <p class="setting-hint" style="margin-top: 6px;">Token impact: <span id="module-tokens-live" style="font-family: var(--font-mono)">Base + 0 = ~2080</span></p>
+                        </fieldset>
+
+                        <!-- Debug logging -->
+                        <fieldset class="settings-group">
+                            <legend>Debug logging</legend>
+                            <div class="setting-row setting-row--debug-toggle">
+                                <p class="setting-hint setting-hint--toggle">Logs all prompts, AI responses, and execution results for troubleshooting.</p>
+                                <label class="toggle-switch toggle-switch--align-end">
+                                    <input type="checkbox" id="debug-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="debug-actions hidden" id="debug-actions">
+                                <button class="compact-btn" id="export-debug-btn">Export Log</button>
+                                <button class="compact-btn danger" id="clear-debug-btn">Clear</button>
+                            </div>
+                        </fieldset>
+
+                        <!-- Script descriptions -->
+                        <fieldset class="settings-group">
+                            <legend>Script descriptions</legend>
+                            <div class="setting-row setting-row--debug-toggle">
+                                <p class="setting-hint setting-hint--toggle">Auto-generate short descriptions for undescribed scripts when refreshing. Requires Ollama running locally.</p>
+                                <label class="toggle-switch toggle-switch--align-end">
+                                    <input type="checkbox" id="descriptions-toggle">
+                                    <span class="toggle-slider"></span>
+                                </label>
+                            </div>
+                            <div class="setting-row" style="margin-top: 8px;">
+                                <label for="summary-model-select">Auto-Summary Model</label>
+                                <select id="summary-model-select">
+                                    <option value="">[Auto-detect]</option>
+                                </select>
+                            </div>
+                            <div class="settings-inline-btns" id="desc-actions">
+                                <button type="button" class="text-btn" id="generate-descriptions-now">⚡ Generate Missing</button>
+                                <button type="button" class="text-btn" id="regenerate-script-descriptions-btn">↻ Regenerate All</button>
+                            </div>
+                            <div class="settings-inline-btns">
+                                <button type="button" class="text-btn" id="export-descriptions-csv">Export CSV</button>
+                                <button type="button" class="text-btn" id="import-descriptions-csv">Import CSV</button>
+                                <input type="file" id="import-descriptions-file" accept=".csv,.txt" class="hidden">
+                            </div>
+                        </fieldset>
+                    </div>
+                </details>
+            </div>
+        </main>
+    </div>
+
+    <!-- ─── Download Folder Overlay ─── -->
+    <div class="aide-overlay hidden" id="aide-overlay" role="dialog" aria-modal="true" aria-label="Save Script">
+        <div class="overlay-panel">
+            <div class="overlay-header">
+                <span class="overlay-title">Save Script</span>
+                <button class="overlay-close-btn" id="overlay-close-btn" title="Cancel" aria-label="Cancel">✕</button>
+            </div>
+            <p class="overlay-subtitle">Choose where to save <strong id="overlay-script-name"></strong></p>
+            <div class="overlay-body">
+                <button class="overlay-native-btn" id="overlay-native-btn">
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 19a2 2 0 01-2 2H4a2 2 0 01-2-2V5a2 2 0 012-2h5l2 3h9a2 2 0 012 2z"/></svg>
+                    Choose Location…
+                </button>
+                <div class="overlay-divider-row"><span class="overlay-divider-label">or save to</span></div>
+                <div class="overlay-folders" id="overlay-folders"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ─── Tree Overflow Menu Popup ─── -->
+    <div class="tree-overflow-menu hidden" id="tree-overflow-menu" role="menu">
+        <button class="tree-overflow-item" data-overflow-action="run"         id="tom-run">▶ Run</button>
+        <button class="tree-overflow-item" data-overflow-action="fav"         id="tom-fav">★ Favorite</button>
+        <button class="tree-overflow-item" data-overflow-action="copy-path"   id="tom-copy">📋 Copy Path</button>
+        <button class="tree-overflow-item" data-overflow-action="reveal"      id="tom-reveal">🗂 Reveal in Finder</button>
+        <button class="tree-overflow-item" data-overflow-action="edit-desc"   id="tom-desc">📝 Edit Description</button>
+        <button class="tree-overflow-item" data-overflow-action="add-to-set" id="tom-add-to-set">📦 Add to Set</button>
+        <button class="tree-overflow-item danger" data-overflow-action="hide" id="tom-hide">🙈 Hide</button>
+    </div>
+
+    <!-- ─── Set Overflow Menu Popup ─── -->
+    <div class="tree-overflow-menu hidden" id="set-overflow-menu" role="menu">
+        <button class="tree-overflow-item" data-set-action="rename">✏️ Rename</button>
+        <button class="tree-overflow-item" data-set-action="color">🎨 Change Color</button>
+        <button class="tree-overflow-item danger" data-set-action="delete">🗑 Delete Set</button>
+    </div>
+
+    <!-- ─── Create/Edit Set Overlay ─── -->
+    <div class="overlay hidden" id="set-overlay">
+        <div class="overlay-content">
+            <h3 id="set-overlay-title">Create New Set</h3>
+            <div class="setting-row">
+                <label for="set-overlay-name">Name</label>
+                <input type="text" id="set-overlay-name" placeholder="e.g. Print Output">
+            </div>
+            <div class="setting-row">
+                <label for="set-overlay-icon">Icon (emoji)</label>
+                <input type="text" id="set-overlay-icon" placeholder="📦" maxlength="2" style="width: 50px;">
+            </div>
+            <div class="setting-row">
+                <label for="set-overlay-color">Color</label>
+                <input type="color" id="set-overlay-color" value="#E8A838">
+            </div>
+            <div class="overlay-actions">
+                <button type="button" class="btn-secondary" id="set-overlay-cancel">Cancel</button>
+                <button type="button" class="btn-primary" id="set-overlay-save">Save</button>
+            </div>
+        </div>
+    </div>
+
+    <script src="js/CSInterface.js"></script>
+    <script src="js/utils.js"></script>
+    <script src="js/models.js"></script>
+    <script src="js/scripts.js"></script>
+    <script src="js/system-prompt.js"></script>
+    <script src="js/chat.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
