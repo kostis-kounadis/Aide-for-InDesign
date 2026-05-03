@@ -28,8 +28,9 @@ Works with local AI models (via [Ollama](https://ollama.com)), or cloud provider
 ## 🚀 Getting Started
 
 ### Requirements
-- Adobe InDesign CC 2020 or later (version 15.0+)
-- macOS 10.14+ or Windows 10+
+- Adobe InDesign CC 2021 (v16.0) or later — (CEP 10, Chromium 88)
+- Recommended: Adobe InDesign CC 2023+ (v18.0)
+- macOS 10.15+ or Windows 10+
 - For local AI: [Ollama](https://ollama.com) installed and running
 - For cloud AI: An API key from your chosen provider
 

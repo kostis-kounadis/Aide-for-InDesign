@@ -632,30 +632,27 @@ body {
    ═══════════════════════════════════════ */
 .scripts-toolbar {
     display: flex;
-    align-items: center;
-    justify-content: space-between;
+    flex-direction: column;
     gap: 8px;
     padding: 8px 10px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
-.scripts-toolbar-left {
-    flex: 0 0 auto;
-    min-width: 0;
-}
-.scripts-toolbar-right {
+.scripts-toolbar-row {
     display: flex;
     align-items: center;
+    width: 100%;
+}
+.scripts-toolbar-actions {
     gap: 6px;
-    flex: 1;
-    justify-content: flex-end;
-    min-width: 0;
+    justify-content: flex-start;
+}
+.scripts-search-bar {
+    width: 100%;
 }
 .scripts-search-wrap {
     position: relative;
-    flex: 0 1 140px;
-    min-width: 72px;
-    max-width: 140px;
+    width: 100%;
 }
 .scripts-subtabs {
     display: inline-flex;
@@ -683,18 +680,9 @@ body {
     color: var(--accent);
     font-weight: 600;
 }
-.scripts-search-compact {
+.scripts-search-wrap .search-input {
     width: 100%;
-    max-width: 140px;
-    flex: 0 1 140px;
-    min-width: 72px;
-    padding: 5px 7px;
-    font-size: 10px;
-}
-.scripts-search-wrap .scripts-search-compact {
-    max-width: none;
-    flex: 1 1 auto;
-    padding-right: 22px; /* room for clear button */
+    padding: 5px 22px 5px 8px;
 }
 .scripts-search-clear {
     position: absolute;
@@ -1795,14 +1783,14 @@ input:checked + .toggle-slider::before {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     flex-shrink: 0;
     vertical-align: middle;
 }
 .icon-svg svg {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
@@ -1814,21 +1802,27 @@ input:checked + .toggle-slider::before {
 /* ── Compact / Expanded view state toggle ── */
 /* Default is compact — toggled by .scripts-list--expanded on the container */
 .scripts-list {
-    --row-h:        26px;   /* compact row height */
-    --row-pad-v:    3px;
+    /* ── Step 4: unified tree design tokens ── */
+    --tree-row-height:  22px;   /* strict grid — all rows snap here */
+    --tree-indent-unit: 16px;   /* one level of depth indentation */
+    --tree-chevron-w:   10px;   /* rendered width of the chevron icon */
+    /* Legacy aliases kept for any remaining references */
+    --row-h:        var(--tree-row-height);
+    --row-pad-v:    2px;
     --icon-size:    12px;
     --font-sz:      11px;
     --ext-visible:  inline;
     --desc-visible: none;
-    /* Per-depth indent; tuned to align: child folder icon under parent first letter */
-    --tree-indent:  22px;
+    /* Single source of truth — used by folder-row, script-row, AND folder-children */
+    --tree-indent:  var(--tree-indent-unit);
 }
 .scripts-list--expanded {
-    --row-h:        36px;
-    --row-pad-v:    6px;
-    --font-sz:      11.5px;
-    --ext-visible:  inline;
-    --desc-visible: block;
+    --tree-row-height:  32px;
+    --row-h:            32px;
+    --row-pad-v:        5px;
+    --font-sz:          11.5px;
+    --ext-visible:      inline;
+    --desc-visible:     block;
 }
 
 /* ── Folder row (details/summary) ── */
@@ -1846,22 +1840,50 @@ input:checked + .toggle-slider::before {
 /* Vertical connector line — include root folders too */
 .script-folder > .folder-children {
     position: relative;
-    /* align vertical line under the folder chevron of THIS folder */
-    margin-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent, 22px) + 5px);
     padding-left: 0;
-    border-left: 1px solid var(--border-strong);
+    margin-left: 0; /* Guide line is handled by ::before, do not shift layout */
+    content-visibility: auto;
+    contain-intrinsic-size: 0 auto;
+}
+
+.script-folder > .folder-children::before {
+    content: "";
+    position: absolute;
+    top: 0;
+    bottom: 0;
+    width: 1px;
+    background-color: var(--border);
+    /*
+     * Guide-line geometry (Step 4):
+     * The folder row's content starts at: 8px + depth * --tree-indent-unit
+     * The chevron is the first element in that content area, width = --tree-chevron-w
+     * Guide line must sit at the chevron's horizontal centre:
+     *   offset = 8px + depth * unit + (chevron-w / 2)
+     * --tree-depth is set directly on the .script-folder element by JS (style="--tree-depth:N")
+     */
+    left: calc(
+        8px +
+        var(--tree-depth, 0) * var(--tree-indent-unit, 12px) +
+        var(--tree-chevron-w, 10px) / 2
+    );
 }
 
 .folder-row {
     display: flex;
     align-items: center;
     gap: 2px;
-    height: var(--row-h, 26px);
-    padding: var(--row-pad-v, 3px) 8px;
-    padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent, 10px));
+    /* Hard-lock to grid; no min-height so rows don't stretch on long names */
+    height: var(--tree-row-height, 22px);
+    padding: var(--row-pad-v, 2px) 8px;
+    /* Unified indent: same token as the guide-line margin-left calculation */
+    padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent-unit, 12px));
     cursor: pointer;
     border-radius: var(--radius);
-    transition: background var(--aide-transition), color var(--aide-transition);
+    border-left: 2px solid transparent;   /* reserve space for hover accent */
+    transition:
+        background var(--aide-transition),
+        color       var(--aide-transition),
+        border-color var(--aide-transition);
     user-select: none;
     font-size: var(--font-sz, 11px);
     font-weight: 600;
@@ -1869,8 +1891,10 @@ input:checked + .toggle-slider::before {
     position: relative;
     letter-spacing: 0.01em;
 }
+/* VS Code-style hover: solid bg + 2px accent left border */
 .folder-row:hover {
-    background: color-mix(in srgb, var(--aide-accent) 10%, transparent);
+    background: var(--bg-tertiary);
+    border-left-color: var(--aide-accent);
     color: var(--text-primary);
 }
 
@@ -1910,8 +1934,8 @@ input:checked + .toggle-slider::before {
     transition: opacity 0.15s;
 }
 .folder-row-icon svg {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
@@ -1952,15 +1976,22 @@ input:checked + .toggle-slider::before {
     display: flex;
     align-items: center;
     gap: 2px;
-    height: var(--row-h, 26px);
-    padding: var(--row-pad-v, 3px) 8px;
-    padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent, 10px));
+    /* Hard-lock to grid */
+    height: var(--tree-row-height, 22px);
+    padding: var(--row-pad-v, 2px) 8px;
+    /* Unified indent — matches folder-row and guide-line calculation */
+    padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent-unit, 12px));
     border-radius: var(--radius);
-    transition: background var(--aide-transition), color var(--aide-transition);
+    border-left: 2px solid transparent;   /* reserve space for hover accent */
+    transition:
+        background   var(--aide-transition),
+        color        var(--aide-transition),
+        border-color var(--aide-transition);
     font-size: var(--font-sz, 11px);
     color: var(--text-primary);
     cursor: default;
     position: relative;
+    contain: layout style;
     animation: rowIn 0.16s ease-out both;
     animation-delay: calc(var(--row-idx, 0) * 15ms);
 }
@@ -1968,11 +1999,14 @@ input:checked + .toggle-slider::before {
 .script-row:nth-child(even) {
     background: color-mix(in srgb, var(--bg-tertiary) 40%, transparent);
 }
+/* VS Code-style hover: solid bg + 2px accent left border */
 .script-row:hover {
-    background: color-mix(in srgb, var(--aide-accent) 12%, transparent);
+    background: var(--bg-tertiary);
+    border-left-color: var(--aide-accent);
 }
 .script-row:active {
-    background: color-mix(in srgb, var(--aide-accent) 20%, transparent);
+    background: color-mix(in srgb, var(--aide-accent) 18%, transparent);
+    border-left-color: var(--aide-accent);
 }
 
 /* Stagger animation for first 12 rows */
@@ -2052,8 +2086,8 @@ input:checked + .toggle-slider::before {
     color: var(--text-secondary);
 }
 .script-row-icon svg {
-    width: 12px;
-    height: 12px;
+    width: 14px;
+    height: 14px;
     fill: none;
     stroke: currentColor;
     stroke-width: 1.8;
@@ -2328,10 +2362,10 @@ input:checked + .toggle-slider::before {
     border-left-width: 4px; /* Color tag */
     border-radius: var(--aide-radius);
     overflow: hidden;
-    transition: border-color var(--aide-transition), box-shadow var(--aide-transition);
+    transition: border-color var(--aide-transition);
 }
 .set-card:hover {
-    box-shadow: 0 3px 10px rgba(0,0,0,0.25);
+    border-color: var(--border-strong);
 }
 
 .set-card-header {
@@ -2386,9 +2420,12 @@ input:checked + .toggle-slider::before {
     display: flex;
     align-items: center;
     gap: 8px;
-    padding: 6px 12px 6px 14px;
-    font-size: 12px;
-    color: var(--text-secondary);
+    height: var(--tree-row-height, 22px);
+    padding: var(--row-pad-v, 2px) 12px var(--row-pad-v, 2px) 12px; /* Slight extra padding for card */
+    font-size: var(--font-sz, 11px);
+    color: var(--text-primary);
+    border-left: 2px solid transparent;
+    transition: background var(--aide-transition), border-color var(--aide-transition);
 }
 .set-script-row > span {
     flex: 1;
@@ -2405,7 +2442,8 @@ input:checked + .toggle-slider::before {
 }
 
 .set-script-row:hover {
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
+    border-left-color: var(--aide-accent);
 }
 
 .create-set-full-btn {
@@ -2579,19 +2617,22 @@ input:checked + .toggle-slider::before {
     display: flex;
     align-items: center;
     justify-content: space-between;
-    padding: 5px 6px;
+    height: var(--tree-row-height, 22px);
+    padding: var(--row-pad-v, 2px) 8px;
     border-radius: var(--radius);
-    transition: background var(--aide-transition);
-    min-height: 28px;
+    border-left: 2px solid transparent;
+    transition: background var(--aide-transition), border-color var(--aide-transition);
+    color: var(--text-primary);
 }
 
 .tree-row:hover {
-    background: var(--bg-secondary);
+    background: var(--bg-tertiary);
+    border-left-color: var(--aide-accent);
 }
 
 .tree-label {
     flex: 1;
-    font-size: 12px;
+    font-size: var(--font-sz, 11px);
     color: var(--text-primary);
     overflow: hidden;
     text-overflow: ellipsis;

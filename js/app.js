@@ -61,6 +61,8 @@ document.addEventListener('DOMContentLoaded', () => {
         scriptsSubtabFavs:  $id('scripts-subtab-favs'),
         scriptsStarFilterBtn: $id('scripts-star-filter-btn'),
         scriptsShowHiddenBtn: $id('scripts-show-hidden-btn'),
+        scriptsExpandAllBtn:  $id('scripts-expand-all'),
+        scriptsCollapseAllBtn: $id('scripts-collapse-all'),
         scriptsRefreshBtn:  $id('scripts-refresh-btn'),
         autoRunCheckbox:    $id('auto-run-checkbox'),
         // Step 5: Tree overflow menu
@@ -70,7 +72,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setOverlay:          $id('set-overlay'),
         setOverlayTitle:     $id('set-overlay-title'),
         setOverlayName:      $id('set-overlay-name'),
-        setOverlayIcon:      $id('set-overlay-icon'),
         setOverlayColor:     $id('set-overlay-color'),
         setOverlaySave:      $id('set-overlay-save'),
         setOverlayCancel:    $id('set-overlay-cancel'),
@@ -894,9 +895,13 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function syncScriptsSubtabUI() {
-        if (dom.scriptsSubtabLocal) dom.scriptsSubtabLocal.classList.toggle('active', scriptsSubTab === 'local');
+        const isLocal = scriptsSubTab === 'local';
+        if (dom.scriptsSubtabLocal) dom.scriptsSubtabLocal.classList.toggle('active', isLocal);
         if (dom.scriptsSubtabSets) dom.scriptsSubtabSets.classList.toggle('active', scriptsSubTab === 'sets');
         if (dom.scriptsSubtabFavs) dom.scriptsSubtabFavs.classList.toggle('active', scriptsSubTab === 'favs');
+        
+        if (dom.scriptsExpandAllBtn) dom.scriptsExpandAllBtn.classList.toggle('hidden', !isLocal);
+        if (dom.scriptsCollapseAllBtn) dom.scriptsCollapseAllBtn.classList.toggle('hidden', !isLocal);
     }
 
     function syncViewToggleBtn() {
@@ -942,6 +947,8 @@ document.addEventListener('DOMContentLoaded', () => {
         dom.scriptsStarFilterBtn.title = scriptsStarFilter ? 'Show all scripts' : 'Show starred only';
     }
 
+    let _lastScriptsSubtab = null;
+
     function setScriptsSubTab(tab) {
         if (['local', 'sets', 'favs'].indexOf(tab) >= 0) {
             scriptsSubTab = tab;
@@ -950,6 +957,12 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         AideScripts.setScriptsSubtab(scriptsSubTab);
         syncScriptsSubtabUI();
+        
+        if (_lastScriptsSubtab !== scriptsSubTab) {
+            if (dom.scriptsList) dom.scriptsList.innerHTML = '';
+            _lastScriptsSubtab = scriptsSubTab;
+        }
+
         if (scriptsSubTab === 'local' || scriptsSubTab === 'favs') {
             fetchLocalScriptTree(() => {
                 fetchLocalScriptList(() => refreshScriptsList());
@@ -1096,6 +1109,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const enc = p => encodeURIComponent(p);
         const esc = AideUtils.escapeHtml;
         const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
+        const fileIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>`;
+        const folderIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
         const decodeLabel = (value) => {
             const raw = String(value || '');
             try { return decodeURIComponent(raw); } catch (e) { return raw.replace(/%20/g, ' '); }
@@ -1120,13 +1135,14 @@ document.addEventListener('DOMContentLoaded', () => {
                         const name = decodeLabel(p.split('/').pop().split('\\').pop());
                         return `<div class="set-script-row">
                             <button type="button" class="tree-run-btn" data-action="run-local" data-enc-path="${enc(p)}" title="Run">${runIconSvg}</button>
-                            <span>📄 ${esc(name)}</span>
+                            <span class="set-script-row-icon icon-svg" aria-hidden="true">${fileIconSvg}</span>
+                            <span>${esc(name)}</span>
                         </div>`;
                     }).join('');
 
                     return `<details class="set-card" style="border-left-color: ${esc(s.color || '#fff')};">
                         <summary class="set-card-header">
-                            <span class="set-icon">${esc(s.icon || '📦')}</span>
+                            <span class="set-icon icon-svg">${folderIconSvg}</span>
                             <span class="set-name">${esc(s.name)}</span>
                             <span class="set-count">${(s.scripts || []).length} scripts</span>
                             <button class="tree-overflow-btn" data-action="set-overflow" data-path="${enc(s._path)}" title="Set options">⋯</button>
@@ -1194,8 +1210,9 @@ document.addEventListener('DOMContentLoaded', () => {
         const enc = p => encodeURIComponent(p);
         const esc = AideUtils.escapeHtml;
         const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
-        const favs = AideScripts.loadLocalFavorites();
+        const favs = Array.from(AideScripts.loadLocalFavorites());
         const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
+        const fileIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>`;
 
         if (favs.length === 0 && !q) {
             dom.scriptsList.innerHTML = '';
@@ -1222,7 +1239,8 @@ document.addEventListener('DOMContentLoaded', () => {
                     const name = p.split('/').pop().split('\\').pop();
                     const isBin = name.toLowerCase().endsWith('.jsxbin') || name.toLowerCase().endsWith('.bin');
                     return `<div class="tree-row">
-                        <span class="tree-label">📄 ${esc(name)}</span>
+                        <span class="fav-script-row-icon icon-svg" aria-hidden="true">${fileIconSvg}</span>
+                        <span class="tree-label">${esc(name)}</span>
                         <div class="tree-actions">
                             ${!isBin ? `<button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${enc(p)}" title="Run script">${runIconSvg}</button>` : ''}
                             <button type="button" class="tree-overflow-btn" data-action="tree-overflow" data-enc-path="${enc(p)}" data-name="${esc(name)}" data-is-fav="true" data-is-hidden="false" data-is-bin="${isBin}">⋯</button>
@@ -1443,6 +1461,22 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    if (dom.scriptsExpandAllBtn) {
+        dom.scriptsExpandAllBtn.addEventListener('click', () => {
+            if (scriptsSubTab !== 'local') return;
+            AideScripts.expandAllFolders(localTreeData);
+            refreshScriptsList();
+        });
+    }
+
+    if (dom.scriptsCollapseAllBtn) {
+        dom.scriptsCollapseAllBtn.addEventListener('click', () => {
+            if (scriptsSubTab !== 'local') return;
+            AideScripts.collapseAllFolders();
+            refreshScriptsList();
+        });
+    }
+
     // Step 5: Show Hidden toggle
     if (dom.scriptsShowHiddenBtn) {
         dom.scriptsShowHiddenBtn.addEventListener('click', () => {
@@ -1473,40 +1507,7 @@ document.addEventListener('DOMContentLoaded', () => {
         syncScriptsSearchClear();
     }
 
-    // ── Step 5: Script list click delegation (tree-run + tree-overflow) ──
-    if (dom.scriptsList) {
-        dom.scriptsList.addEventListener('click', (e) => {
-            hideTreeOverflowMenu();
-
-            const runBtn = e.target.closest('[data-action="tree-run"]');
-            if (runBtn) {
-                const encPath = runBtn.dataset.encPath;
-                if (!encPath) return;
-                const path = decodeURIComponent(encPath);
-                if (!isAllowedLocalScriptPath(path)) return;
-                // Step 9: pulse animation
-                runBtn.classList.add('pulse');
-                setTimeout(() => runBtn.classList.remove('pulse'), 300);
-                loadLocalFileContent(path, (code) => {
-                    if (code.indexOf('Error') === 0) { alert(code); return; }
-                    executeCode(code, runBtn, { failedCode: code });
-                });
-                return;
-            }
-
-            const ovfBtn = e.target.closest('[data-action="tree-overflow"]');
-            if (ovfBtn) {
-                e.stopPropagation();
-                const ep       = ovfBtn.dataset.encPath || '';
-                const name     = ovfBtn.dataset.name || '';
-                const isFav    = ovfBtn.dataset.isFav || 'false';
-                const isHidden = ovfBtn.dataset.isHidden || 'false';
-                const isBin    = ovfBtn.dataset.isBin || 'false';
-                showTreeOverflowMenu(ovfBtn, ep, name, isFav, isHidden, isBin);
-                return;
-            }
-        });
-    }
+    /* Delegated to unified scriptsList click handler below */
 
     // Double-click local tree row → execute script
     if (dom.scriptsList) {
@@ -1680,7 +1681,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 const s = localSetsData.find(x => x._path === editingSetPath);
                 if (s) existingScripts = s.scripts || [];
             }
-            saveAideSet(name, dom.setOverlayIcon.value || '📦', dom.setOverlayColor.value || '#E8A838', existingScripts);
+            saveAideSet(name, '', dom.setOverlayColor.value || '#E8A838', existingScripts);
         });
     }
 
@@ -1708,21 +1709,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    // Step 6: Create New Set + set-overflow delegation
-    if (dom.scriptsList) {
-        dom.scriptsList.addEventListener('click', (e) => {
-            const createBtn = e.target.closest('#create-new-set-btn');
-            if (createBtn) {
-                showSetOverlay(null);
-                return;
-            }
-            const setOvf = e.target.closest('[data-action="set-overflow"]');
-            if (setOvf) {
-                e.stopPropagation();
-                showSetOverflowMenu(setOvf, setOvf.dataset.path);
-            }
-        });
-    }
+    /* Delegated to unified scriptsList click handler below */
 
     function showAddToSetPrompt(scriptPath, scriptName) {
         if (!localSetsData.length) {
@@ -1897,13 +1884,49 @@ document.addEventListener('DOMContentLoaded', () => {
 
 
 
+    // ── Step 5: Unified Single Event Delegation on scriptsList ──
     dom.scriptsList.addEventListener('click', (e) => {
+        // Intercept create-set button (no data-action)
+        const createBtn = e.target.closest('#create-new-set-btn');
+        if (createBtn) {
+            showSetOverlay(null);
+            return;
+        }
+
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
+        
         const id = btn.dataset.id;
         const action = btn.dataset.action;
-        const encPath = btn.dataset.encPath;
+        const encPath = btn.dataset.encPath || btn.dataset.path;
         const localPath = encPath ? getDecodedPath(encPath) : '';
+
+        if (action === 'tree-run') {
+            if (!localPath || !isAllowedLocalScriptPath(localPath)) return;
+            btn.classList.add('pulse');
+            setTimeout(() => btn.classList.remove('pulse'), 300);
+            loadLocalFileContent(localPath, (code) => {
+                if (code.indexOf('Error') === 0) { alert(code); return; }
+                executeCode(code, btn, { failedCode: code });
+            });
+            return;
+        }
+
+        if (action === 'tree-overflow') {
+            e.stopPropagation();
+            const name     = btn.dataset.name || '';
+            const isFav    = btn.dataset.isFav || 'false';
+            const isHidden = btn.dataset.isHidden || 'false';
+            const isBin    = btn.dataset.isBin || 'false';
+            showTreeOverflowMenu(btn, encPath || '', name, isFav, isHidden, isBin);
+            return;
+        }
+
+        if (action === 'set-overflow') {
+            e.stopPropagation();
+            showSetOverflowMenu(btn, encPath || '');
+            return;
+        }
 
         if (action === 'run') {
             const script = AideScripts.getById(id);

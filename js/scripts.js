@@ -203,31 +203,31 @@ const AideScripts = (() => {
         try {
             const raw = localStorage.getItem(LOCAL_FAV_KEY);
             const arr = raw ? JSON.parse(raw) : [];
-            return Array.isArray(arr) ? arr : [];
+            return new Set(Array.isArray(arr) ? arr : []);
         } catch (e) {
-            return [];
+            return new Set();
         }
     }
 
-    function persistLocalFavorites(ids) {
+    function persistLocalFavorites(set) {
         try {
-            localStorage.setItem(LOCAL_FAV_KEY, JSON.stringify(ids));
+            localStorage.setItem(LOCAL_FAV_KEY, JSON.stringify(Array.from(set || [])));
         } catch (e) {
             console.warn('Could not save local favorites:', e);
         }
     }
 
     function isLocalFavorite(path) {
-        return loadLocalFavorites().indexOf(path) !== -1;
+        return loadLocalFavorites().has(path);
     }
 
     function toggleLocalFavorite(path) {
-        const ids = loadLocalFavorites();
-        const i = ids.indexOf(path);
-        if (i === -1) ids.push(path);
-        else ids.splice(i, 1);
-        persistLocalFavorites(ids);
-        return i === -1;
+        const set = loadLocalFavorites();
+        const isFav = set.has(path);
+        if (isFav) set.delete(path);
+        else set.add(path);
+        persistLocalFavorites(set);
+        return !isFav;
     }
 
     function getScriptsSubtab() {
@@ -276,53 +276,68 @@ const AideScripts = (() => {
         try {
             const raw = localStorage.getItem(OPEN_FOLDERS_KEY);
             const arr = raw ? JSON.parse(raw) : [];
-            return Array.isArray(arr) ? arr : [];
-        } catch (e) { return []; }
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch (e) { return new Set(); }
     }
 
-    function persistOpenFolders(arr) {
-        try { localStorage.setItem(OPEN_FOLDERS_KEY, JSON.stringify(arr || [])); }
+    function persistOpenFolders(set) {
+        try { localStorage.setItem(OPEN_FOLDERS_KEY, JSON.stringify(Array.from(set || []))); }
         catch (e) { /* ignore */ }
     }
 
     function isFolderOpen(path) {
-        return loadOpenFolders().indexOf(path) !== -1;
+        return loadOpenFolders().has(path);
     }
 
     function setFolderOpen(path, open) {
         const p = String(path || '');
         if (!p) return;
-        const arr = loadOpenFolders();
-        const i = arr.indexOf(p);
-        if (open && i === -1) arr.push(p);
-        if (!open && i !== -1) arr.splice(i, 1);
-        persistOpenFolders(arr);
+        const set = loadOpenFolders();
+        if (open) set.add(p);
+        else set.delete(p);
+        persistOpenFolders(set);
+    }
+
+    function expandAllFolders(trees) {
+        const set = loadOpenFolders();
+        function walk(node) {
+            if (node.type === 'folder' || node.children) {
+                if (node.path) set.add(node.path);
+                (node.children || []).forEach(walk);
+            }
+        }
+        (trees || []).forEach(walk);
+        persistOpenFolders(set);
+    }
+
+    function collapseAllFolders() {
+        persistOpenFolders(new Set());
     }
 
     function loadHiddenPaths() {
         try {
             const raw = localStorage.getItem(HIDDEN_KEY);
             const arr = raw ? JSON.parse(raw) : [];
-            return Array.isArray(arr) ? arr : [];
-        } catch (e) { return []; }
+            return new Set(Array.isArray(arr) ? arr : []);
+        } catch (e) { return new Set(); }
     }
 
-    function persistHiddenPaths(arr) {
-        try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(arr)); }
+    function persistHiddenPaths(set) {
+        try { localStorage.setItem(HIDDEN_KEY, JSON.stringify(Array.from(set || []))); }
         catch (e) { console.warn('Could not save hidden paths:', e); }
     }
 
     function isHiddenPath(path) {
-        return loadHiddenPaths().indexOf(path) !== -1;
+        return loadHiddenPaths().has(path);
     }
 
     function toggleHiddenPath(path) {
-        const arr = loadHiddenPaths();
-        const i = arr.indexOf(path);
-        if (i === -1) arr.push(path);
-        else arr.splice(i, 1);
-        persistHiddenPaths(arr);
-        return i === -1; // true = now hidden
+        const set = loadHiddenPaths();
+        const hidden = set.has(path);
+        if (hidden) set.delete(path);
+        else set.add(path);
+        persistHiddenPaths(set);
+        return !hidden; // true = now hidden
     }
 
     function getShowHidden() {
@@ -336,19 +351,31 @@ const AideScripts = (() => {
     }
 
     /**
+     * Internal: load frozen snapshot of all render-relevant state.
+     * Prevents localStorage lookups during recursive tree rendering.
+     */
+    function _loadRenderState() {
+        return Object.freeze({
+            openFolders: loadOpenFolders(),
+            hiddenPaths: loadHiddenPaths(),
+            favPaths:    loadLocalFavorites()
+        });
+    }
+
+    /**
      * Count visible script files in a tree node (recursive).
      * Used for folder count badges.
      */
-    function countVisibleFiles(node, showHidden) {
+    function countVisibleFiles(node, showHidden, state) {
         if (!node) return 0;
         if (node.type === 'file') {
-            if (!showHidden && isHiddenPath(node.path)) return 0;
+            if (!showHidden && state.hiddenPaths.has(node.path)) return 0;
             return 1;
         }
         // folder
         let count = 0;
         if (node.children) {
-            node.children.forEach(c => { count += countVisibleFiles(c, showHidden); });
+            node.children.forEach(c => { count += countVisibleFiles(c, showHidden, state); });
         }
         return count;
     }
@@ -357,10 +384,10 @@ const AideScripts = (() => {
      * Filter a tree node's children by search query (recursive).
      * Returns a copy of the node with matching descendants only.
      */
-    function filterTreeNode(node, q, showHidden) {
+    function filterTreeNode(node, q, showHidden, state) {
         if (!node) return null;
         if (node.type === 'file') {
-            if (!showHidden && isHiddenPath(node.path)) return null;
+            if (!showHidden && state.hiddenPaths.has(node.path)) return null;
             if (!q) return node;
             const name = (node.name || '').toLowerCase();
             return name.indexOf(q) !== -1 ? node : null;
@@ -369,7 +396,7 @@ const AideScripts = (() => {
         const filteredChildren = [];
         if (node.children) {
             node.children.forEach(c => {
-                const r = filterTreeNode(c, q, showHidden);
+                const r = filterTreeNode(c, q, showHidden, state);
                 if (r) filteredChildren.push(r);
             });
         }
@@ -382,75 +409,390 @@ const AideScripts = (() => {
         return Object.assign({}, node, { children: filteredChildren });
     }
 
+    // ── SVG constants shared between buildTreeDom and patchTreeDom ──
+    const _SVG = {
+        chevron: '<svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg>',
+        folder:  '<svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>',
+        file:    '<svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>',
+        star:    '<svg viewBox="0 0 24 24"><polygon points="12 3.5 14.85 9.28 21.23 10.21 16.61 14.72 17.7 21.08 12 18.08 6.3 21.08 7.39 14.72 2.77 10.21 9.15 9.28 12 3.5"/></svg>',
+        lock:    '<svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" ry="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+        run:     '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>'
+    };
+
+    function _decodeLabel(value) {
+        const raw = String(value || '');
+        try { return decodeURIComponent(raw); } catch (e) { return raw.replace(/%20/g, ' '); }
+    }
+
+    // ── Step 6: Deferred Rendering Logic ──
+    let _renderQueue = [];
+    let _idleCallbackId = null;
+
+    function _cancelDeferredRender() {
+        if (_idleCallbackId !== null) {
+            if (window.cancelIdleCallback) window.cancelIdleCallback(_idleCallbackId);
+            else clearTimeout(_idleCallbackId);
+            _idleCallbackId = null;
+        }
+        _renderQueue = [];
+    }
+
+    function _processDeferredQueue(deadline) {
+        const isIdle = () => deadline && deadline.timeRemaining ? deadline.timeRemaining() > 1 : true;
+        const start = Date.now();
+        
+        while (_renderQueue.length > 0 && (isIdle() || (deadline && deadline.didTimeout))) {
+            const task = _renderQueue.shift();
+            task();
+            if (!deadline || !deadline.timeRemaining) {
+                if (Date.now() - start > 15) break; // 15ms batch for setTimeout fallback
+            }
+        }
+        
+        if (_renderQueue.length > 0) {
+            if (window.requestIdleCallback) _idleCallbackId = window.requestIdleCallback(_processDeferredQueue);
+            else _idleCallbackId = setTimeout(() => _processDeferredQueue(null), 0);
+        } else {
+            _idleCallbackId = null;
+        }
+    }
+
+    function _countNodes(nodes) {
+        if (!nodes) return 0;
+        return nodes.reduce((sum, n) => sum + 1 + (n.children ? _countNodes(n.children) : 0), 0);
+    }
+
     /**
-     * Recursively render a tree node into HTML string.
-     * folder  → <details class="script-folder">
-     * file    → <div class="script-row">
+     * Build a real DOM element for a single tree node (initial render).
+     * folder → <details class="script-folder">
+     * file   → <div class="script-row">
+     *
+     * @param {object}  node      — tree node { type, path, name, children, binary }
+     * @param {number}  depth     — nesting depth (0 = root)
+     * @param {object}  state     — frozen render state from _loadRenderState() + query
+     * @param {boolean} showHidden
+     * @param {boolean} isRoot
+     * @returns {HTMLElement}
      */
-    function renderTreeNodeHtml(node, depth, favPaths, showHidden, isRoot) {
-        if (!node) return '';
+    function buildTreeDom(node, depth, state, showHidden, isRoot, deferChildren = false) {
         const esc = AideUtils.escapeHtml;
-        const enc = p => encodeURIComponent(p);
-        const decodeLabel = (value) => {
-            const raw = String(value || '');
-            try { return decodeURIComponent(raw); } catch (e) { return raw.replace(/%20/g, ' '); }
-        };
-        const folderChevronSvg = `<span class="folder-chevron icon-svg" aria-hidden="true"><svg viewBox="0 0 24 24"><polyline points="9 6 15 12 9 18"/></svg></span>`;
-        const folderIconSvg = `<span class="folder-row-icon icon-svg" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg></span>`;
-        const fileIconSvg = `<span class="script-row-icon icon-svg" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg></span>`;
-        const starIconSvg = `<span class="script-row-icon icon-svg" aria-hidden="true"><svg viewBox="0 0 24 24"><polygon points="12 3.5 14.85 9.28 21.23 10.21 16.61 14.72 17.7 21.08 12 18.08 6.3 21.08 7.39 14.72 2.77 10.21 9.15 9.28 12 3.5"/></svg></span>`;
-        const lockIconSvg = `<span class="script-row-icon icon-svg" aria-hidden="true"><svg viewBox="0 0 24 24"><rect x="5" y="11" width="14" height="10" rx="2" ry="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></span>`;
-        const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
 
         if (node.type === 'file') {
-            const isFav    = favPaths.indexOf(node.path) !== -1;
-            const isHidden = isHiddenPath(node.path);
+            const isFav    = state.favPaths.has(node.path);
+            const isHidden = state.hiddenPaths.has(node.path);
             const isBin    = !!node.binary;
-            const ep       = enc(node.path);
-            const hidStyle = isHidden ? ' tree-row--hidden' : '';
-            const decodedPath = decodeLabel(node.path);
-            const decodedName = decodeLabel(node.name || '');
+            const ep       = encodeURIComponent(node.path);
+            const decodedPath = _decodeLabel(node.path);
+            const decodedName = _decodeLabel(node.name || '');
 
-            // Strip extension from display name
             let displayName = decodedName;
             const dotPos = displayName.lastIndexOf('.');
             const extDisp = dotPos !== -1 ? displayName.substring(dotPos) : '';
             if (dotPos !== -1) displayName = displayName.substring(0, dotPos);
-            const iconHtml = isBin ? lockIconSvg : (isFav ? starIconSvg : fileIconSvg);
 
-            return `<div class="script-row${hidStyle}${isFav ? ' script-row--fav' : ''}" data-path="${ep}" data-type="file" data-is-bin="${isBin ? 'true' : 'false'}" style="--tree-depth:${depth}" title="${esc(decodedPath)}">
-  ${isBin ? '' : `<button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${ep}" title="Run">${runIconSvg}</button>`}
-  ${iconHtml}
-  <span class="script-row-name">${esc(displayName)}</span><span class="script-row-ext">${esc(extDisp)}</span>
-  <div class="script-row-right">
-    <button type="button" class="tree-overflow-btn" data-action="tree-overflow" data-enc-path="${ep}" data-name="${esc(decodedName)}" data-is-fav="${isFav}" data-is-hidden="${isHidden}" data-is-bin="${isBin}" title="More options">⋯</button>
-  </div>
-</div>`;
+            const row = document.createElement('div');
+            row.className = 'script-row' +
+                (isHidden ? ' tree-row--hidden' : '') +
+                (isFav    ? ' script-row--fav'  : '');
+            row.dataset.path   = ep;
+            row.dataset.type   = 'file';
+            row.dataset.isBin  = isBin ? 'true' : 'false';
+            row.dataset.isFav  = isFav  ? 'true' : 'false';
+            row.dataset.isHidden = isHidden ? 'true' : 'false';
+            row.style.setProperty('--tree-depth', depth);
+            row.title = decodedPath;
+
+            if (!isBin) {
+                const runBtn = document.createElement('button');
+                runBtn.type = 'button';
+                runBtn.className = 'tree-run-btn';
+                runBtn.dataset.action   = 'tree-run';
+                runBtn.dataset.encPath  = ep;
+                runBtn.title = 'Run';
+                runBtn.innerHTML = _SVG.run;
+                row.appendChild(runBtn);
+            }
+
+            const iconSpan = document.createElement('span');
+            iconSpan.className = 'script-row-icon icon-svg';
+            iconSpan.setAttribute('aria-hidden', 'true');
+            iconSpan.innerHTML = isBin ? _SVG.lock : (isFav ? _SVG.star : _SVG.file);
+            row.appendChild(iconSpan);
+
+            const nameSpan = document.createElement('span');
+            nameSpan.className = 'script-row-name';
+            nameSpan.textContent = displayName;
+            row.appendChild(nameSpan);
+
+            const extSpan = document.createElement('span');
+            extSpan.className = 'script-row-ext';
+            extSpan.textContent = extDisp;
+            row.appendChild(extSpan);
+
+            const right = document.createElement('div');
+            right.className = 'script-row-right';
+            const overflowBtn = document.createElement('button');
+            overflowBtn.type = 'button';
+            overflowBtn.className = 'tree-overflow-btn';
+            overflowBtn.dataset.action   = 'tree-overflow';
+            overflowBtn.dataset.encPath  = ep;
+            overflowBtn.dataset.name     = esc(decodedName);
+            overflowBtn.dataset.isFav    = String(isFav);
+            overflowBtn.dataset.isHidden = String(isHidden);
+            overflowBtn.dataset.isBin    = String(isBin);
+            overflowBtn.title = 'More options';
+            overflowBtn.textContent = '\u22ef';
+            right.appendChild(overflowBtn);
+            row.appendChild(right);
+
+            return row;
         }
 
-        // Folder node
-        const childrenHtml = (node.children || []).map(c => renderTreeNodeHtml(c, depth + 1, favPaths, showHidden, false)).join('');
-        const count = countVisibleFiles(node, showHidden);
-        const countBadge = count > 0 ? `<span class="folder-count">${count}</span>` : '';
-        const openAttr = isFolderOpen(node.path) ? ' open' : '';
-        const rootAttr = isRoot ? ' data-root="true"' : '';
-        const folderLabel = decodeLabel(node.name || '');
+        // ── Folder node ──
+        const details = document.createElement('details');
+        details.className = 'script-folder';
+        details.style.setProperty('--tree-depth', depth);
+        details.dataset.folderPath = encodeURIComponent(node.path);
+        if (isRoot) details.dataset.root = 'true';
 
-        return `<details class="script-folder" style="--tree-depth:${depth}"${openAttr}${rootAttr} data-folder-path="${encodeURIComponent(node.path)}">
-  <summary class="folder-row">
-    ${folderChevronSvg}
-    ${folderIconSvg}
-    <span class="folder-row-name">${esc(folderLabel)}</span>
-    ${countBadge}
-  </summary>
-  <div class="folder-children">
-${childrenHtml}
-  </div>
-</details>`;
+        // Determine open state: always open when query active, else use persisted state
+        const shouldOpen = state.query
+            ? true
+            : state.openFolders.has(node.path);
+        if (shouldOpen) details.open = true;
+
+        const summary = document.createElement('summary');
+        summary.className = 'folder-row';
+
+        const chevronSpan = document.createElement('span');
+        chevronSpan.className = 'folder-chevron icon-svg';
+        chevronSpan.setAttribute('aria-hidden', 'true');
+        chevronSpan.innerHTML = _SVG.chevron;
+        summary.appendChild(chevronSpan);
+
+        const folderIconSpan = document.createElement('span');
+        folderIconSpan.className = 'folder-row-icon icon-svg';
+        folderIconSpan.setAttribute('aria-hidden', 'true');
+        folderIconSpan.innerHTML = _SVG.folder;
+        summary.appendChild(folderIconSpan);
+
+        const nameSpan = document.createElement('span');
+        nameSpan.className = 'folder-row-name';
+        nameSpan.textContent = _decodeLabel(node.name || '');
+        summary.appendChild(nameSpan);
+
+        const count = countVisibleFiles(node, showHidden, state);
+        if (count > 0) {
+            const badge = document.createElement('span');
+            badge.className = 'folder-count';
+            badge.textContent = count;
+            summary.appendChild(badge);
+        }
+
+        details.appendChild(summary);
+
+        const childrenDiv = document.createElement('div');
+        childrenDiv.className = 'folder-children';
+        
+        const buildChildren = () => {
+            const frag = document.createDocumentFragment();
+            (node.children || []).forEach(c => {
+                frag.appendChild(buildTreeDom(c, depth + 1, state, showHidden, false, deferChildren));
+            });
+            childrenDiv.appendChild(frag);
+        };
+
+        if (deferChildren && node.children && node.children.length > 0 && !shouldOpen) {
+            _renderQueue.push(buildChildren);
+        } else {
+            buildChildren();
+        }
+
+        details.appendChild(childrenDiv);
+
+        return details;
+    }
+
+    /**
+     * Update a file row in-place without replacing it.
+     * Only toggles CSS classes and data attributes — no DOM replacement.
+     */
+    function _patchFileRow(el, node, state) {
+        const isFav    = state.favPaths.has(node.path);
+        const isHidden = state.hiddenPaths.has(node.path);
+
+        // Classes
+        el.classList.toggle('tree-row--hidden',  isHidden);
+        el.classList.toggle('script-row--fav',   isFav);
+
+        // Data attributes that the overflow menu reads
+        el.dataset.isFav    = String(isFav);
+        el.dataset.isHidden = String(isHidden);
+
+        // Overflow button data attrs
+        const ob = el.querySelector('.tree-overflow-btn');
+        if (ob) {
+            ob.dataset.isFav    = String(isFav);
+            ob.dataset.isHidden = String(isHidden);
+        }
+
+        // Icon: swap between file/star/lock
+        const iconSpan = el.querySelector('.script-row-icon');
+        if (iconSpan) {
+            const isBin = el.dataset.isBin === 'true';
+            iconSpan.innerHTML = isBin ? _SVG.lock : (isFav ? _SVG.star : _SVG.file);
+        }
+    }
+
+    /**
+     * Patch the container to match `filteredTrees` without nuking it.
+     *
+     * Algorithm:
+     *  1. Build a Map<path, domElement> from the live DOM for O(1) lookup.
+     *  2. For each node in filteredTrees:
+     *     - If a live element exists for that path → update in place (file) or recurse (folder).
+     *     - Otherwise → build a fresh element and insert it.
+     *  3. Remove live elements whose path is no longer in filteredTrees.
+     *  4. Re-order children to match the data order.
+     *
+     * @param {HTMLElement} container    — scripts-list element
+     * @param {Array}       filteredTrees — filtered root nodes
+     * @param {object}      state        — frozen render state + query
+     * @param {boolean}     showHid
+     */
+    function patchTreeDom(container, filteredTrees, state, showHid) {
+        // Build a lookup of existing top-level elements by their path key
+        const existingMap = new Map();
+        Array.from(container.children).forEach(el => {
+            const key = el.dataset.path || el.dataset.folderPath || '';
+            if (key) existingMap.set(key, el);
+        });
+
+        // Determine the ordered set of paths we need after filtering
+        const desiredKeys = [];
+        filteredTrees.forEach(root => {
+            const key = encodeURIComponent(root.path);
+            desiredKeys.push(key);
+        });
+        const desiredSet = new Set(desiredKeys);
+
+        // Remove elements no longer in the filtered result
+        existingMap.forEach((el, key) => {
+            if (!desiredSet.has(key)) {
+                el.remove();
+                existingMap.delete(key);
+            }
+        });
+
+        // Build or update, then re-order
+        filteredTrees.forEach((root, idx) => {
+            const key = encodeURIComponent(root.path);
+            let el = existingMap.get(key);
+
+            if (!el) {
+                // New root node — build from scratch
+                el = buildTreeDom(root, 0, state, showHid, true);
+                existingMap.set(key, el);
+            } else {
+                // Existing root — patch in-place
+                _patchNode(el, root, 0, state, showHid, true);
+            }
+
+            // Re-order: ensure el is at position `idx`
+            const current = container.children[idx];
+            if (current !== el) {
+                container.insertBefore(el, current || null);
+            }
+        });
+    }
+
+    /**
+     * Recursively patch a live DOM node against fresh tree data.
+     * For files: update in-place. For folders: recurse into children div.
+     */
+    function _patchNode(el, node, depth, state, showHidden, isRoot) {
+        if (node.type === 'file') {
+            _patchFileRow(el, node, state);
+            return;
+        }
+
+        // Folder: update open state
+        const shouldOpen = state.query
+            ? true
+            : state.openFolders.has(node.path);
+        
+        el.open = shouldOpen;
+
+        // Update badge count
+        const summary = el.querySelector(':scope > summary');
+        if (summary) {
+            const badge = summary.querySelector('.folder-count');
+            const count = countVisibleFiles(node, showHidden, state);
+            if (count > 0) {
+                if (badge) {
+                    badge.textContent = count;
+                } else {
+                    const b = document.createElement('span');
+                    b.className = 'folder-count';
+                    b.textContent = count;
+                    summary.appendChild(b);
+                }
+            } else if (badge) {
+                badge.remove();
+            }
+        }
+
+        // Recurse into children
+        const childrenDiv = el.querySelector(':scope > .folder-children');
+        if (!childrenDiv) return;
+
+        const childNodes = node.children || [];
+
+        // Build lookup of existing child elements
+        const existingChildren = new Map();
+        Array.from(childrenDiv.children).forEach(child => {
+            const key = child.dataset.path || child.dataset.folderPath || '';
+            if (key) existingChildren.set(key, child);
+        });
+
+        const desiredChildKeys = new Set(
+            childNodes.map(c => encodeURIComponent(c.path))
+        );
+
+        // Remove children no longer present
+        existingChildren.forEach((child, key) => {
+            if (!desiredChildKeys.has(key)) {
+                child.remove();
+                existingChildren.delete(key);
+            }
+        });
+
+        // Patch or create children, then re-order
+        childNodes.forEach((child, idx) => {
+            const key = encodeURIComponent(child.path);
+            let childEl = existingChildren.get(key);
+
+            if (!childEl) {
+                childEl = buildTreeDom(child, depth + 1, state, showHidden, false);
+                existingChildren.set(key, childEl);
+            } else {
+                _patchNode(childEl, child, depth + 1, state, showHidden, false);
+            }
+
+            const current = childrenDiv.children[idx];
+            if (current !== childEl) {
+                childrenDiv.insertBefore(childEl, current || null);
+            }
+        });
     }
 
     /**
      * Render the full hierarchical tree for the Local tab.
+     *
+     * First call: builds the DOM from scratch (buildTreeDom).
+     * Subsequent calls: patches the live DOM in place (patchTreeDom),
+     * preserving scroll position, open-folder state, and focus.
+     *
      * @param {HTMLElement} container   — the scripts-list element
      * @param {HTMLElement} emptyEl     — the empty-state element
      * @param {Array}       trees       — array of root tree nodes from scanScriptFolderJson
@@ -459,33 +801,24 @@ ${childrenHtml}
      * @param {boolean}     showHid     — if true, show hidden scripts
      */
     function renderScriptTree(container, emptyEl, trees, searchQuery, favOnly, showHid) {
+        _cancelDeferredRender();
         const q = (searchQuery || '').toLowerCase().trim();
-        const favPaths = loadLocalFavorites();
+        // Attach query to state so buildTreeDom/patchTreeDom can use it for auto-expand
+        const baseState = _loadRenderState();
+        const state = Object.freeze(Object.assign(Object.create(null), baseState, { query: q }));
 
-        // Collect all file nodes to support favOnly filter
-        function collectFiles(node) {
-            if (!node) return [];
-            if (node.type === 'file') return [node];
-            let out = [];
-            (node.children || []).forEach(c => { out = out.concat(collectFiles(c)); });
-            return out;
+        function keepFavs(n) {
+            if (!n) return null;
+            if (n.type === 'file') return state.favPaths.has(n.path) ? n : null;
+            const ch = (n.children || []).map(keepFavs).filter(Boolean);
+            return ch.length ? Object.assign({}, n, { children: ch }) : null;
         }
 
-        // Apply filters to a tree
-        let filtered = trees.map(root => {
+        // Apply filters
+        const filtered = trees.map(root => {
             if (!root) return null;
-            let r = root;
-            if (favOnly) {
-                // Keep only file nodes whose path is in favorites
-                function keepFavs(n) {
-                    if (!n) return null;
-                    if (n.type === 'file') return favPaths.indexOf(n.path) !== -1 ? n : null;
-                    const ch = (n.children || []).map(keepFavs).filter(Boolean);
-                    return ch.length ? Object.assign({}, n, { children: ch }) : null;
-                }
-                r = keepFavs(r);
-            }
-            return r ? filterTreeNode(r, q, showHid) : null;
+            let r = favOnly ? keepFavs(root) : root;
+            return r ? filterTreeNode(r, q, showHid, state) : null;
         }).filter(Boolean);
 
         const hasContent = filtered.some(root => {
@@ -495,14 +828,36 @@ ${childrenHtml}
         });
 
         if (!hasContent) {
-            container.innerHTML = '';
-            container.appendChild(emptyEl);
+            // Clear tree children but leave emptyEl slot intact
+            while (container.firstChild && container.firstChild !== emptyEl) {
+                container.removeChild(container.firstChild);
+            }
+            if (!container.contains(emptyEl)) container.appendChild(emptyEl);
             emptyEl.classList.remove('hidden');
             return;
         }
 
         emptyEl.classList.add('hidden');
-        container.innerHTML = filtered.map(root => renderTreeNodeHtml(root, 0, favPaths, showHid, true)).join('');
+        if (container.contains(emptyEl)) container.removeChild(emptyEl);
+
+        // Check if the container already has tree content (i.e. not first render)
+        const hasDomContent = container.children.length > 0;
+
+        if (hasDomContent) {
+            patchTreeDom(container, filtered, state, showHid);
+        } else {
+            // Initial render: build real DOM nodes, no innerHTML
+            const totalNodes = _countNodes(filtered);
+            const useDefer = totalNodes > 150;
+            const frag = document.createDocumentFragment();
+            filtered.forEach(root => frag.appendChild(buildTreeDom(root, 0, state, showHid, true, useDefer)));
+            container.appendChild(frag);
+            
+            if (useDefer && _renderQueue.length > 0) {
+                if (window.requestIdleCallback) _idleCallbackId = window.requestIdleCallback(_processDeferredQueue);
+                else _idleCallbackId = setTimeout(() => _processDeferredQueue(null), 0);
+            }
+        }
     }
 
     return {
@@ -512,6 +867,7 @@ ${childrenHtml}
         descKeyLocal, descKeyAide,
         // ── Local script folders ──
         getScriptsFolder, setScriptsFolder, getScriptFolders, setScriptFolders, addScriptFolder, removeScriptFolder,
+        setFolderOpen, isFolderOpen, expandAllFolders, collapseAllFolders,
         // ── Local disk favorites ──
         isLocalFavorite, toggleLocalFavorite, loadLocalFavorites,
         // ── UI persistence ──
@@ -522,8 +878,6 @@ ${childrenHtml}
         isHiddenPath, toggleHiddenPath,
         getShowHidden, setShowHidden,
         // ── Tree open-state persistence ──
-        setFolderOpen, isFolderOpen,
         DEFAULT_FOLDER
     };
 })();
-

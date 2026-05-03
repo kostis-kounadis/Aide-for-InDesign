@@ -97,18 +97,22 @@
         <!-- ─── Scripts Tab (launcher) ─── -->
         <main class="tab-content" id="view-scripts">
             <div class="scripts-toolbar">
-                <div class="scripts-toolbar-left">
+                <div class="scripts-toolbar-row">
                     <div class="scripts-subtabs" role="tablist">
                         <button type="button" class="scripts-subtab active" data-scripts-subtab="local" id="scripts-subtab-local" role="tab">Local</button>
                         <button type="button" class="scripts-subtab" data-scripts-subtab="sets" id="scripts-subtab-sets" role="tab">Sets</button>
                         <button type="button" class="scripts-subtab" data-scripts-subtab="favs" id="scripts-subtab-favs" role="tab">Favs</button>
                     </div>
                 </div>
-                <div class="scripts-toolbar-right">
+                
+                <div class="scripts-toolbar-row scripts-search-bar">
                     <div class="scripts-search-wrap" role="search">
-                        <input type="text" class="search-input scripts-search-compact" id="scripts-search" placeholder="Search…" title="Search scripts">
+                        <input type="text" class="search-input" id="scripts-search" placeholder="Search…" title="Search scripts">
                         <button type="button" class="scripts-search-clear" id="scripts-search-clear" title="Clear search" aria-label="Clear search" disabled>✕</button>
                     </div>
+                </div>
+
+                <div class="scripts-toolbar-row scripts-toolbar-actions">
                     <button type="button" class="code-action-btn scripts-star-filter-btn" id="scripts-star-filter-btn" title="Show starred only">☆</button>
                     <button type="button" class="code-action-btn code-action-btn--icon scripts-show-hidden-btn hidden" id="scripts-show-hidden-btn" title="Show hidden scripts">
                         <svg class="eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -120,6 +124,19 @@
                             <path d="M9.9 4.24A10.94 10.94 0 0 1 12 4c7 0 11 8 11 8a21.88 21.88 0 0 1-3.17 4.62"></path>
                             <path d="M14.12 14.12a3 3 0 0 1-4.24-4.24"></path>
                             <line x1="1" y1="1" x2="23" y2="23"></line>
+                        </svg>
+                    </button>
+                    <div style="flex: 1;"></div>
+                    <button type="button" class="code-action-btn code-action-btn--icon" id="scripts-expand-all" title="Expand All">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="7 13 12 18 17 13"></polyline>
+                            <polyline points="7 6 12 11 17 6"></polyline>
+                        </svg>
+                    </button>
+                    <button type="button" class="code-action-btn code-action-btn--icon" id="scripts-collapse-all" title="Collapse All">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="7 11 12 6 17 11"></polyline>
+                            <polyline points="7 18 12 13 17 18"></polyline>
                         </svg>
                     </button>
                     <button type="button" class="code-action-btn scripts-toolbar-refresh" id="scripts-refresh-btn" title="Refresh list">↻</button>
@@ -314,9 +331,9 @@
 
     <!-- ─── Set Overflow Menu Popup ─── -->
     <div class="tree-overflow-menu hidden" id="set-overflow-menu" role="menu">
-        <button class="tree-overflow-item" data-set-action="rename">✏️ Rename</button>
-        <button class="tree-overflow-item" data-set-action="color">🎨 Change Color</button>
-        <button class="tree-overflow-item danger" data-set-action="delete">🗑 Delete Set</button>
+        <button class="tree-overflow-item" data-set-action="rename">Rename</button>
+        <button class="tree-overflow-item" data-set-action="color">Change Color</button>
+        <button class="tree-overflow-item danger" data-set-action="delete">Delete Set</button>
     </div>
 
     <!-- ─── Create/Edit Set Overlay ─── -->
@@ -327,10 +344,7 @@
                 <label for="set-overlay-name">Name</label>
                 <input type="text" id="set-overlay-name" placeholder="e.g. Print Output">
             </div>
-            <div class="setting-row">
-                <label for="set-overlay-icon">Icon (emoji)</label>
-                <input type="text" id="set-overlay-icon" placeholder="📦" maxlength="8" style="width: 70px;">
-            </div>
+
             <div class="setting-row">
                 <label for="set-overlay-color">Color</label>
                 <div class="set-color-picker">
