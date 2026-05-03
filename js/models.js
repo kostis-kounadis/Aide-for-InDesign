@@ -27,7 +27,6 @@ const AideModels = (() => {
             custom: ''
         },
         customEndpoint: '',
-        summaryModel: '',
         debugLogging: false
     };
 
@@ -383,104 +382,7 @@ const AideModels = (() => {
         }
     }
 
-    // Model priority list for auto-summarization (matching backup behavior)
-    var OLLAMA_SUMMARY_MODEL_PRIORITY = [
-        'qwen2.5-coder:14b',
-        'qwen2.5-coder:7b',
-        'deepseek-coder-v2:16b',
-        'codestral:22b',
-        'codegemma:7b',
-        'codellama:7b',
-        'llama3:8b'
-    ];
-
-    /**
-     * One or two plain-language sentences about ExtendScript; uses Ollama only (configured host).
-     * Returns '' if Ollama is unreachable or no suitable model.
-     */
-    async function ollamaSummarizeScriptCode(code) {
-        // 3.3: Detect binary/compiled content — skip LLM summarization
-        if (isBinaryOrEncoded(code)) {
-            return 'Compiled script (binary — no preview available)';
-        }
-
-        const host = (config.ollamaHost || 'http://localhost:11434').replace(/\/+$/, '');
-        let installed = [];
-        try {
-            // 3.6: Add 5-second timeout to prevent hanging on unreachable Ollama
-            const r = await fetchWithTimeout(`${host}/api/tags`, 5000);
-            if (!r.ok) return '';
-            const data = await r.json();
-            installed = (data.models || []).map(m => m.name);
-        } catch (e) {
-            return '';
-        }
-        if (!installed.length) return '';
-
-        let pick = null;
-        for (var i = 0; i < OLLAMA_SUMMARY_MODEL_PRIORITY.length; i++) {
-            if (installed.indexOf(OLLAMA_SUMMARY_MODEL_PRIORITY[i]) !== -1) {
-                pick = OLLAMA_SUMMARY_MODEL_PRIORITY[i];
-                break;
-            }
-        }
-        if (!pick) {
-            pick = installed.find(function(n) { return /coder|code|llama|mistral|gemma/i.test(n); }) || installed[0];
-        }
-
-        // Check user override
-        if (config.summaryModel && installed.indexOf(config.summaryModel) !== -1) {
-            pick = config.summaryModel;
-        }
-
-        const snippet = code.length > 14000
-            ? code.substring(0, 14000) + '\n/* … truncated … */'
-            : code;
-        // 3.2: Fixed — previously said "Adobe Illustrator" causing hallucinated descriptions
-        const userMsg =
-            'In one short sentence (up to 22 words), describe what this Adobe InDesign ExtendScript does. ' +
-            'Do not use an intro like "This script..." or "This Adobe InDesign ExtendScript...". Start directly with a verb (e.g., "Applies paragraph styles...", "Creates a table..."). ' +
-            'If the script starts with comments that explain it, you may paraphrase those. ' +
-            'Do NOT mention InDesign, Adobe, Illustrator, or any software name in your response. ' +
-            'No markdown, no code fences, no bullets — only the sentence.\n\n---\n' +
-            snippet;
-
-        try {
-            const r = await fetch(`${host}/api/chat`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                    model: pick,
-                    messages: [{ role: 'user', content: userMsg }],
-                    stream: false,
-                    options: { temperature: 0.2, num_ctx: 8192 }
-                })
-            });
-            if (!r.ok) return '';
-            const data = await r.json();
-            let out = (data.message && data.message.content) ? String(data.message.content).trim() : '';
-            out = out.replace(/^```[\s\S]*?```/m, '').trim();
-            if (out.length > 800) out = out.substring(0, 797) + '…';
-            return out;
-        } catch (e) {
-            return '';
-        }
-    }
-
-    /**
-     * Detect binary or compiled (.jsxbin) content that should not be sent to the LLM.
-     * @param {string} content - The script content to check
-     * @returns {boolean} true if the content appears to be binary/compiled
-     */
-    function isBinaryOrEncoded(content) {
-        if (!content || typeof content !== 'string') return false;
-        // jsxbin magic header
-        if (content.substring(0, 10).indexOf('@JSXBIN') !== -1) return true;
-        // Check for high density of non-printable characters
-        var sample = content.substring(0, 2000);
-        var nonPrintable = sample.replace(/[\x20-\x7E\r\n\t]/g, '').length;
-        return nonPrintable / sample.length > 0.1;
-    }
+    // Light version: script descriptions feature removed.
 
     async function sendOllamaChat(messages, signal) {
         const url = `${config.ollamaHost}/api/chat`;
@@ -655,7 +557,7 @@ const AideModels = (() => {
         getDefaultModel, getRecommendedModels, getRemoteModels,
         fetchOllamaModels, fetchGoogleModels,
         checkOllamaConnection, testRemoteConnection,
-        sendChat, ollamaSummarizeScriptCode,
+        sendChat,
         log, getDebugLog, clearDebugLog, exportDebugLog
     };
 })();

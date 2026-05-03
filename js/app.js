@@ -55,19 +55,12 @@ document.addEventListener('DOMContentLoaded', () => {
         testConnBtn:        $id('test-connection-btn'),
         testResult:         $id('test-result'),
         localFoldersList:   $id('local-scripts-folders-list'),
-        regenerateDescBtn:  $id('regenerate-script-descriptions-btn'),
-        descriptionsToggle: $id('descriptions-toggle'),
-        generateDescNowBtn: $id('generate-descriptions-now'),
-        exportDescCsvBtn:   $id('export-descriptions-csv'),
-        importDescCsvBtn:   $id('import-descriptions-csv'),
-        importDescFile:     $id('import-descriptions-file'),
-        summaryModelSelect: $id('summary-model-select'),
+        // Light version: script descriptions feature removed.
         scriptsSubtabLocal: $id('scripts-subtab-local'),
         scriptsSubtabSets:  $id('scripts-subtab-sets'),
         scriptsSubtabFavs:  $id('scripts-subtab-favs'),
         scriptsStarFilterBtn: $id('scripts-star-filter-btn'),
         scriptsShowHiddenBtn: $id('scripts-show-hidden-btn'),
-        scriptsViewToggleBtn: $id('scripts-view-toggle-btn'),
         scriptsRefreshBtn:  $id('scripts-refresh-btn'),
         autoRunCheckbox:    $id('auto-run-checkbox'),
         // Step 5: Tree overflow menu
@@ -109,7 +102,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let scriptsSubTab = AideScripts.getScriptsSubtab();
     let scriptsStarFilter = AideScripts.getScriptsStarFilter();
-    let scriptsViewMode = AideScripts.getScriptsViewMode();
+    // Light version: compact-only scripts view (no toggle)
+    let scriptsViewMode = 'compact';
 
     const AUTO_RUN_KEY = 'aide_auto_run_enabled';
     let autoRunEnabled = false;
@@ -117,8 +111,7 @@ document.addEventListener('DOMContentLoaded', () => {
         autoRunEnabled = localStorage.getItem(AUTO_RUN_KEY) === 'true';
     } catch (e) { /* ignore */ }
 
-    // Auto-descriptions toggle state
-    let autoDescEnabled = AideScripts.getAutoDescriptions();
+    // Light version: script descriptions feature removed.
     
     // Persistent custom models list per provider (2.3.1.1 fix)
     // Structure: { ollama: [...], google: [...], openai: [...], anthropic: [...], openrouter: [...], custom: [...] }
@@ -162,13 +155,7 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.removeItem('aide_custom_models');
     }
 
-    if (dom.descriptionsToggle) {
-        dom.descriptionsToggle.checked = autoDescEnabled;
-        dom.descriptionsToggle.addEventListener('change', () => {
-            autoDescEnabled = dom.descriptionsToggle.checked;
-            AideScripts.setAutoDescriptions(autoDescEnabled);
-        });
-    }
+    // Light version: script descriptions toggle removed.
 
     if (dom.autoRunCheckbox) {
         dom.autoRunCheckbox.checked = autoRunEnabled;
@@ -913,63 +900,11 @@ document.addEventListener('DOMContentLoaded', () => {
     }
 
     function syncViewToggleBtn() {
-        if (!dom.scriptsViewToggleBtn) return;
-        const compact = scriptsViewMode === 'compact';
-        dom.scriptsViewToggleBtn.textContent = compact ? '⊞' : '☰';
-        dom.scriptsViewToggleBtn.title = compact ? 'Switch to expanded view' : 'Switch to compact view';
-        if (dom.scriptsList) {
-            dom.scriptsList.classList.toggle('scripts-list--expanded', !compact);
-        }
+        // Light version: ensure expanded class is never applied.
+        if (dom.scriptsList) dom.scriptsList.classList.remove('scripts-list--expanded');
     }
 
-    function setScriptsViewMode(mode) {
-        scriptsViewMode = mode === 'compact' ? 'compact' : 'expanded';
-        AideScripts.setScriptsViewMode(scriptsViewMode);
-        syncViewToggleBtn();
-        refreshScriptsList();
-    }
-
-    function collectMissingDescriptionJobs() {
-        const jobs = [];
-        const q = (dom.scriptsSearch.value || '').toLowerCase().trim();
-        if (scriptsSubTab === 'local' || scriptsSubTab === 'favs' || scriptsSubTab === 'sets') {
-            let entries = localScriptEntries.slice();
-            if (scriptsStarFilter) {
-                entries = entries.filter(e => AideScripts.isLocalFavorite(e.path));
-            }
-            if (q) {
-                entries = entries.filter(e =>
-                    (e.name && e.name.toLowerCase().indexOf(q) !== -1) ||
-                    (e.relPath && e.relPath.toLowerCase().indexOf(q) !== -1) ||
-                    (e.folderRoot && e.folderRoot.toLowerCase().indexOf(q) !== -1)
-                );
-            }
-            entries.forEach(e => {
-                const k = AideScripts.descKeyLocal(e.path);
-                if (!AideScripts.getScriptDescription(k)) {
-                    jobs.push({ key: k, path: e.path });
-                }
-            });
-        }
-        return jobs;
-    }
-
-    async function processDescriptionJobs(jobs) {
-        for (let i = 0; i < jobs.length; i++) {
-            const job = jobs[i];
-            let code = job.code;
-            if (code == null && job.path) {
-                code = await new Promise(resolve => {
-                    loadLocalFileContent(job.path, resolve);
-                });
-                if (!code || String(code).indexOf('Error') === 0) continue;
-            }
-            if (!code) continue;
-            const txt = await AideModels.ollamaSummarizeScriptCode(code);
-            if (txt) AideScripts.setScriptDescription(job.key, txt);
-            refreshScriptsList();
-        }
-    }
+    // Light version: script descriptions feature removed.
 
     async function runScriptsToolbarRefresh() {
         if (dom.scriptsRefreshBtn) {
@@ -990,10 +925,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 await new Promise(resolve => fetchAideSets(resolve));
             }
             refreshScriptsList();
-            // Auto-enrich if toggle is ON
-            if (autoDescEnabled) {
-                runEnrichMissingDescriptions();
-            }
         } finally {
             if (dom.scriptsRefreshBtn) {
                 dom.scriptsRefreshBtn.disabled = false;
@@ -1001,45 +932,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         }
     }
-
-
-    async function runEnrichMissingDescriptions() {
-        const jobs = collectMissingDescriptionJobs();
-        if (jobs.length > 0) {
-            await processDescriptionJobs(jobs);
-        }
-    }
-
-    async function runRegenerateAllDescriptions() {
-        if (!dom.regenerateDescBtn) return;
-        dom.regenerateDescBtn.disabled = true;
-        const prev = dom.regenerateDescBtn.textContent;
-        dom.regenerateDescBtn.textContent = '…';
-        try {
-            AideScripts.clearAllScriptDescriptions();
-            const aideList = AideScripts.loadAll();
-            for (let i = 0; i < aideList.length; i++) {
-                const s = aideList[i];
-                const txt = await AideModels.ollamaSummarizeScriptCode(s.code);
-                if (txt) AideScripts.setScriptDescription(AideScripts.descKeyAide(s.id), txt);
-            }
-            clearLocalScriptContentCache();
-            await new Promise(resolve => {
-                fetchLocalScriptList(() => resolve());
-            });
-            for (let j = 0; j < localScriptEntries.length; j++) {
-                const e = localScriptEntries[j];
-                const code = await new Promise(resolve => loadLocalFileContent(e.path, resolve));
-                if (!code || String(code).indexOf('Error') === 0) continue;
-                const txt = await AideModels.ollamaSummarizeScriptCode(code);
-                if (txt) AideScripts.setScriptDescription(AideScripts.descKeyLocal(e.path), txt);
-            }
-            refreshScriptsList();
-        } finally {
-            dom.regenerateDescBtn.disabled = false;
-            dom.regenerateDescBtn.textContent = prev;
-        }
-    }
+    // Light version: script descriptions feature removed.
 
     function syncStarFilterBtn() {
         if (!dom.scriptsStarFilterBtn) return;
@@ -1542,11 +1435,7 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.scriptsStarFilterBtn) {
         dom.scriptsStarFilterBtn.addEventListener('click', () => setScriptsStarFilter(!scriptsStarFilter));
     }
-    if (dom.scriptsViewToggleBtn) {
-        dom.scriptsViewToggleBtn.addEventListener('click', () => {
-            setScriptsViewMode(scriptsViewMode === 'compact' ? 'expanded' : 'compact');
-        });
-    }
+    // Light version: view toggle removed.
 
     if (dom.scriptsRefreshBtn) {
         dom.scriptsRefreshBtn.addEventListener('click', () => {
@@ -2558,33 +2447,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.modelSelect.innerHTML = options;
             reconcileSavedModelOption(AideModels.getConfig());
 
-            // Populate Auto-Summary Model dropdown
-            // Fix: Always fetch Ollama models regardless of current provider
-            if (dom.summaryModelSelect) {
-                try {
-                    let ollamaModelsArray = [];
-                    let ollamaError = null;
-                    
-                    try {
-                        ollamaModelsArray = await AideModels.fetchOllamaModels();
-                    } catch (err) {
-                        ollamaError = err.message;
-                    }
-                    
-                    let summaryOptions = '<option value="">[Auto-detect]</option>';
-                    if (ollamaModelsArray && ollamaModelsArray.length > 0) {
-                        summaryOptions += ollamaModelsArray.map(function(m) {
-                            var selected = m.name === (cfg.summaryModel || '') ? 'selected' : '';
-                            return '<option value="' + m.name + '" ' + selected + '>' + m.name + ' (' + (m.paramSize || '?') + ')</option>';
-                        }).join('');
-                    } else {
-                        summaryOptions += '<option value="" disabled>Ollama unreachable' + (ollamaError ? ' (' + ollamaError + ')' : '') + '</option>';
-                    }
-                    dom.summaryModelSelect.innerHTML = summaryOptions;
-                } catch(e) {
-                     dom.summaryModelSelect.innerHTML = '<option value="">[Auto-detect] (Err: ' + e.message + ')</option>';
-                }
-            }
+            // Light version: script descriptions feature removed.
 
         } catch (e) {
             dom.modelSelect.innerHTML = '<option value="">Could not load models</option><option value="__custom__">Custom model name…</option>';
@@ -2603,11 +2466,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (dom.summaryModelSelect) {
-        dom.summaryModelSelect.addEventListener('change', () => {
-            AideModels.setConfig({ summaryModel: dom.summaryModelSelect.value });
-        });
-    }
+    // Light version: script descriptions feature removed.
 
     if (dom.exportDebugBtn) {
         dom.exportDebugBtn.addEventListener('click', () => {
@@ -2697,59 +2556,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
-    if (dom.regenerateDescBtn) {
-        dom.regenerateDescBtn.addEventListener('click', () => {
-            runRegenerateAllDescriptions();
-        });
-    }
-
-    if (dom.generateDescNowBtn) {
-        dom.generateDescNowBtn.addEventListener('click', async () => {
-            dom.generateDescNowBtn.disabled = true;
-            const prev = dom.generateDescNowBtn.textContent;
-            dom.generateDescNowBtn.textContent = '…';
-            try {
-                await runEnrichMissingDescriptions();
-            } finally {
-                dom.generateDescNowBtn.disabled = false;
-                dom.generateDescNowBtn.textContent = prev;
-            }
-        });
-    }
-
-    if (dom.exportDescCsvBtn) {
-        dom.exportDescCsvBtn.addEventListener('click', () => {
-            const csv = AideScripts.exportDescriptionsCsv();
-            if (!csv) { alert('No descriptions to export.'); return; }
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
-            const url = URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = 'aide_descriptions_' + new Date().toISOString().slice(0, 10) + '.csv';
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
-            URL.revokeObjectURL(url);
-        });
-    }
-
-    if (dom.importDescCsvBtn && dom.importDescFile) {
-        dom.importDescCsvBtn.addEventListener('click', () => {
-            dom.importDescFile.click();
-        });
-        dom.importDescFile.addEventListener('change', () => {
-            const file = dom.importDescFile.files[0];
-            if (!file) return;
-            const reader = new FileReader();
-            reader.onload = () => {
-                const count = AideScripts.importDescriptionsCsv(reader.result);
-                refreshScriptsList();
-                alert('Imported ' + count + ' description(s).');
-            };
-            reader.readAsText(file);
-            dom.importDescFile.value = ''; // reset for re-import
-        });
-    }
+    // Light version: script descriptions feature removed.
 
     dom.testConnBtn.addEventListener('click', async () => {
         dom.testResult.textContent = 'Testing...';
@@ -2793,7 +2600,6 @@ document.addEventListener('DOMContentLoaded', () => {
             ollamaHost: cfg.ollamaHost,
             customEndpoint: cfg.customEndpoint || '',
             temperature: cfg.temperature,
-            summaryModel: cfg.summaryModel || '',
             customModels: customModels,          // per-provider lists of saved custom model names
             additionalFolders: AideScripts.getScriptFolders(),
             showHidden: showHiddenScripts
@@ -2848,7 +2654,6 @@ document.addEventListener('DOMContentLoaded', () => {
                     if (typeof data.temperature === 'number') cfgUpdate.temperature = data.temperature;
                     if (data.ollamaHost)     cfgUpdate.ollamaHost     = data.ollamaHost;
                     if (data.customEndpoint) cfgUpdate.customEndpoint = data.customEndpoint;
-                    if (data.summaryModel !== undefined) cfgUpdate.summaryModel = data.summaryModel;
                     AideModels.setConfig(cfgUpdate);
 
                     // Restore per-provider custom model lists

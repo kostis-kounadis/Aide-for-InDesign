@@ -11,9 +11,7 @@ const AideScripts = (() => {
     const LOCAL_FAV_KEY = 'aide_local_script_favorites';
     const SCRIPTS_SUBTAB_KEY = 'aide_scripts_subtab';
     const SCRIPTS_STAR_FILTER_KEY = 'aide_scripts_star_filter';
-    const SCRIPTS_VIEW_MODE_KEY = 'aide_scripts_view_mode';
-    const DESCRIPTIONS_KEY = 'aide_launcher_descriptions';
-    const AUTO_DESCRIPTIONS_KEY = 'aide_auto_descriptions';
+    // Light version: compact view only; script descriptions feature removed.
     const DEFAULT_FOLDER = '~/Documents/Aide Scripts/';
 
     // ──────────────────────────────────────────────
@@ -262,140 +260,7 @@ const AideScripts = (() => {
         } catch (e) { /* ignore */ }
     }
 
-    function getScriptsViewMode() {
-        try {
-            return localStorage.getItem(SCRIPTS_VIEW_MODE_KEY) === 'compact' ? 'compact' : 'expanded';
-        } catch (e) {
-            return 'expanded';
-        }
-    }
-
-    function setScriptsViewMode(mode) {
-        try {
-            localStorage.setItem(SCRIPTS_VIEW_MODE_KEY, mode === 'compact' ? 'compact' : 'expanded');
-        } catch (e) { /* ignore */ }
-    }
-
-    function getDescriptionsMap() {
-        try {
-            const raw = localStorage.getItem(DESCRIPTIONS_KEY);
-            const o = raw ? JSON.parse(raw) : {};
-            return o && typeof o === 'object' ? o : {};
-        } catch (e) {
-            return {};
-        }
-    }
-
-    function getScriptDescription(key) {
-        const m = getDescriptionsMap();
-        return m[key] ? String(m[key]) : '';
-    }
-
-    function setScriptDescription(key, text) {
-        try {
-            const m = getDescriptionsMap();
-            m[key] = text;
-            localStorage.setItem(DESCRIPTIONS_KEY, JSON.stringify(m));
-        } catch (e) {
-            console.warn('Could not save description:', e);
-        }
-    }
-
-    function clearAllScriptDescriptions() {
-        try {
-            localStorage.removeItem(DESCRIPTIONS_KEY);
-        } catch (e) { /* ignore */ }
-    }
-
-    function getAutoDescriptions() {
-        try {
-            return localStorage.getItem(AUTO_DESCRIPTIONS_KEY) === 'true';
-        } catch (e) { return false; }
-    }
-
-    function setAutoDescriptions(enabled) {
-        try {
-            localStorage.setItem(AUTO_DESCRIPTIONS_KEY, enabled ? 'true' : 'false');
-        } catch (e) { /* ignore */ }
-    }
-
-    /**
-     * Export all descriptions as a CSV string.
-     * Format: script_key,description (double-quoted, escaped).
-     */
-    function exportDescriptionsCsv() {
-        const m = getDescriptionsMap();
-        const keys = Object.keys(m).sort();
-        if (!keys.length) return '';
-        const csvEsc = (s) => '"' + String(s).replace(/"/g, '""') + '"';
-        const rows = ['script_name,description'];
-        keys.forEach(k => {
-            if (m[k]) rows.push(csvEsc(k) + ',' + csvEsc(m[k]));
-        });
-        return rows.join('\n');
-    }
-
-    /**
-     * Import descriptions from a CSV string. Merges with existing.
-     * Returns the number of descriptions imported.
-     */
-    function importDescriptionsCsv(csvText) {
-        if (!csvText || !csvText.trim()) return 0;
-        const lines = csvText.trim().split(/\r?\n/);
-        const m = getDescriptionsMap();
-        let count = 0;
-        for (let i = 0; i < lines.length; i++) {
-            const line = lines[i].trim();
-            if (!line) continue;
-            // Skip header
-            if (i === 0 && /^script_name\s*,\s*description$/i.test(line)) continue;
-            // Simple CSV parse: find first comma not inside quotes
-            let key = '', desc = '';
-            if (line.charAt(0) === '"') {
-                // Quoted key
-                const endQ = findClosingQuote(line, 0);
-                if (endQ < 0) continue;
-                key = line.substring(1, endQ).replace(/""/g, '"');
-                // Expect comma after closing quote
-                const rest = line.substring(endQ + 1);
-                const commaIdx = rest.indexOf(',');
-                if (commaIdx < 0) continue;
-                desc = unquoteCsv(rest.substring(commaIdx + 1).trim());
-            } else {
-                const commaIdx = line.indexOf(',');
-                if (commaIdx < 0) continue;
-                key = line.substring(0, commaIdx).trim();
-                desc = unquoteCsv(line.substring(commaIdx + 1).trim());
-            }
-            if (key && desc) {
-                m[key] = desc;
-                count++;
-            }
-        }
-        try {
-            localStorage.setItem(DESCRIPTIONS_KEY, JSON.stringify(m));
-        } catch (e) { /* ignore */ }
-        return count;
-    }
-
-    function findClosingQuote(str, openPos) {
-        let i = openPos + 1;
-        while (i < str.length) {
-            if (str.charAt(i) === '"') {
-                if (i + 1 < str.length && str.charAt(i + 1) === '"') { i += 2; continue; }
-                return i;
-            }
-            i++;
-        }
-        return -1;
-    }
-
-    function unquoteCsv(val) {
-        if (val.length >= 2 && val.charAt(0) === '"' && val.charAt(val.length - 1) === '"') {
-            return val.substring(1, val.length - 1).replace(/""/g, '"');
-        }
-        return val;
-    }
+    // Script descriptions feature removed in light version.
 
 
 
@@ -545,8 +410,6 @@ const AideScripts = (() => {
             const hidStyle = isHidden ? ' tree-row--hidden' : '';
             const decodedPath = decodeLabel(node.path);
             const decodedName = decodeLabel(node.name || '');
-            const dkey = descKeyLocal(node.path);
-            const desc = getScriptDescription(dkey);
 
             // Strip extension from display name
             let displayName = decodedName;
@@ -559,7 +422,6 @@ const AideScripts = (() => {
   ${isBin ? '' : `<button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${ep}" title="Run">${runIconSvg}</button>`}
   ${iconHtml}
   <span class="script-row-name">${esc(displayName)}</span><span class="script-row-ext">${esc(extDisp)}</span>
-  ${desc ? `<span class="script-row-desc" title="${esc(desc)}">${esc(desc)}</span>` : ''}
   <div class="script-row-right">
     <button type="button" class="tree-overflow-btn" data-action="tree-overflow" data-enc-path="${ep}" data-name="${esc(decodedName)}" data-is-fav="${isFav}" data-is-hidden="${isHidden}" data-is-bin="${isBin}" title="More options">⋯</button>
   </div>
@@ -654,10 +516,7 @@ ${childrenHtml}
         isLocalFavorite, toggleLocalFavorite, loadLocalFavorites,
         // ── UI persistence ──
         getScriptsSubtab, setScriptsSubtab, getScriptsStarFilter, setScriptsStarFilter,
-        getScriptsViewMode, setScriptsViewMode,
-        // ── Descriptions ──
-        getDescriptionsMap, getScriptDescription, setScriptDescription, clearAllScriptDescriptions,
-        getAutoDescriptions, setAutoDescriptions, exportDescriptionsCsv, importDescriptionsCsv,
+        // Light version: view mode + descriptions removed.
         // ── Tree rendering (Step 5) ──
         renderScriptTree,
         isHiddenPath, toggleHiddenPath,

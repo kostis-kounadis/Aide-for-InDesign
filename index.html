@@ -122,8 +122,7 @@
                             <line x1="1" y1="1" x2="23" y2="23"></line>
                         </svg>
                     </button>
-                    <button type="button" class="code-action-btn scripts-view-toggle-btn" id="scripts-view-toggle-btn" title="Toggle compact / expanded view">☰</button>
-                    <button type="button" class="code-action-btn scripts-toolbar-refresh" id="scripts-refresh-btn" title="Refresh list & generate missing descriptions (Ollama)">↻</button>
+                    <button type="button" class="code-action-btn scripts-toolbar-refresh" id="scripts-refresh-btn" title="Refresh list">↻</button>
                 </div>
             </div>
             <div class="scripts-list" id="scripts-list">
@@ -276,31 +275,7 @@
                         </fieldset>
 
                         <!-- Script descriptions -->
-                        <fieldset class="settings-group">
-                            <legend>Script descriptions</legend>
-                            <div class="setting-row setting-row--debug-toggle">
-                                <p class="setting-hint setting-hint--toggle">Auto-generate short descriptions for undescribed scripts when refreshing. Requires Ollama running locally.</p>
-                                <label class="toggle-switch toggle-switch--align-end">
-                                    <input type="checkbox" id="descriptions-toggle">
-                                    <span class="toggle-slider"></span>
-                                </label>
-                            </div>
-                            <div class="setting-row" style="margin-top: 8px;">
-                                <label for="summary-model-select">Auto-Summary Model</label>
-                                <select id="summary-model-select">
-                                    <option value="">[Auto-detect]</option>
-                                </select>
-                            </div>
-                            <div class="settings-inline-btns" id="desc-actions">
-                                <button type="button" class="text-btn" id="generate-descriptions-now">⚡ Generate Missing</button>
-                                <button type="button" class="text-btn" id="regenerate-script-descriptions-btn">↻ Regenerate All</button>
-                            </div>
-                            <div class="settings-inline-btns">
-                                <button type="button" class="text-btn" id="export-descriptions-csv">Export CSV</button>
-                                <button type="button" class="text-btn" id="import-descriptions-csv">Import CSV</button>
-                                <input type="file" id="import-descriptions-file" accept=".csv,.txt" class="hidden">
-                            </div>
-                        </fieldset>
+                        <!-- Script descriptions feature removed in light version -->
                     </div>
                 </details>
             </div>
