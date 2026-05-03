@@ -34,11 +34,32 @@ Works with local AI models (via [Ollama](https://ollama.com)), or cloud provider
 - For cloud AI: An API key from your chosen provider
 
 ### Installation (macOS)
+**Option A: Quick Install (Recommended)**
 1. Download this repository.
 2. Double-click `enable_debug_mode.command` to allow unsigned extensions.
 3. Double-click `install_extension.command` (enter your password when prompted).
-4. Restart InDesign.
-5. Go to **Window → Extensions → Aide**.
+
+**Option B: Manual Install**
+If you prefer not to use the `.command` scripts:
+1. **Enable Debug Mode**: Open Terminal and run:
+   ```bash
+   defaults write com.adobe.CSXS.9 PlayerDebugMode 1
+   defaults write com.adobe.CSXS.10 PlayerDebugMode 1
+   defaults write com.adobe.CSXS.11 PlayerDebugMode 1
+   defaults write com.adobe.CSXS.12 PlayerDebugMode 1
+   ```
+2. **Create Extension Folder**: 
+   ```bash
+   sudo mkdir -p "/Library/Application Support/Adobe/CEP/extensions/com.aide.indesign"
+   ```
+3. **Copy Files**: Copy `CSXS`, `css`, `js`, `jsx`, and `index.html` from this repo into the folder created above.
+4. **Fix Permissions**:
+   ```bash
+   sudo xattr -cr "/Library/Application Support/Adobe/CEP/extensions/com.aide.indesign"
+   sudo chmod -R 755 "/Library/Application Support/Adobe/CEP/extensions/com.aide.indesign"
+   ```
+
+5. Restart InDesign and go to **Window → Extensions → Aide**.
 
 ### Installation (Windows)
 1. Enable Debug Mode: Run `regedit`, go to `HKEY_CURRENT_USER\Software\Adobe\CSXS.10` (or your version), and set `PlayerDebugMode` to `1`.

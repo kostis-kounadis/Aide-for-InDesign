@@ -1,3 +1,5 @@
 _input_ignore/
 scripts/parse-webhelp.py
 .DS_Store
+plans/
+restore_debug_mode.command
