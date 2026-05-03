@@ -545,6 +545,8 @@ const AideScripts = (() => {
             const hidStyle = isHidden ? ' tree-row--hidden' : '';
             const decodedPath = decodeLabel(node.path);
             const decodedName = decodeLabel(node.name || '');
+            const dkey = descKeyLocal(node.path);
+            const desc = getScriptDescription(dkey);
 
             // Strip extension from display name
             let displayName = decodedName;
@@ -557,6 +559,7 @@ const AideScripts = (() => {
   ${isBin ? '' : `<button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${ep}" title="Run">${runIconSvg}</button>`}
   ${iconHtml}
   <span class="script-row-name">${esc(displayName)}</span><span class="script-row-ext">${esc(extDisp)}</span>
+  ${desc ? `<span class="script-row-desc" title="${esc(desc)}">${esc(desc)}</span>` : ''}
   <div class="script-row-right">
     <button type="button" class="tree-overflow-btn" data-action="tree-overflow" data-enc-path="${ep}" data-name="${esc(decodedName)}" data-is-fav="${isFav}" data-is-hidden="${isHidden}" data-is-bin="${isBin}" title="More options">⋯</button>
   </div>

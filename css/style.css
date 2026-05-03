@@ -733,6 +733,15 @@ body {
     align-items: center;
     justify-content: center;
 }
+.scripts-show-hidden-btn {
+    flex-shrink: 0;
+    height: 26px;
+    min-width: 28px; /* match star + view + refresh */
+    padding: 0 6px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+}
 .scripts-star-filter-btn.active {
     background: var(--bg-tertiary);
     border-color: var(--accent);
@@ -1821,7 +1830,8 @@ input:checked + .toggle-slider::before {
     --font-sz:      11px;
     --ext-visible:  inline;
     --desc-visible: none;
-    --tree-indent:  10px;   /* per-depth indent (fix overly wide indents) */
+    /* Per-depth indent; tuned to align: child folder icon under parent first letter */
+    --tree-indent:  22px;
 }
 .scripts-list--expanded {
     --row-h:        36px;
@@ -1846,15 +1856,16 @@ input:checked + .toggle-slider::before {
 /* Vertical connector line — include root folders too */
 .script-folder > .folder-children {
     position: relative;
-    margin-left: calc(8px + (var(--tree-depth, 0) + 1) * var(--tree-indent, 10px) + 5px);
-    padding-left: 10px;
+    /* align vertical line under the folder chevron of THIS folder */
+    margin-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent, 22px) + 5px);
+    padding-left: 0;
     border-left: 1px solid var(--border-strong);
 }
 
 .folder-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     height: var(--row-h, 26px);
     padding: var(--row-pad-v, 3px) 8px;
     padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent, 10px));
@@ -1950,7 +1961,7 @@ input:checked + .toggle-slider::before {
 .script-row {
     display: flex;
     align-items: center;
-    gap: 4px;
+    gap: 2px;
     height: var(--row-h, 26px);
     padding: var(--row-pad-v, 3px) 8px;
     padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent, 10px));
@@ -1990,8 +2001,8 @@ input:checked + .toggle-slider::before {
 
 /* ── Play button — LEFT of name ── */
 .tree-run-btn {
-    background: none;
-    border: none;
+    background: color-mix(in srgb, var(--bg-tertiary) 65%, transparent);
+    border: 1px solid var(--border);
     cursor: pointer;
     display: inline-flex;
     align-items: center;
@@ -2022,6 +2033,9 @@ input:checked + .toggle-slider::before {
     background: var(--aide-accent);
     color: #fff;
     transform: scale(1.15);
+}
+.tree-run-btn:hover svg {
+    fill: #fff; /* ensure arrow remains visible on blue */
 }
 .tree-run-btn:active {
     transform: scale(0.88);
@@ -2096,6 +2110,43 @@ input:checked + .toggle-slider::before {
     flex-shrink: 0;
     opacity: 0;
     transition: opacity 0.1s;
+}
+.scripts-list--expanded .script-row-right {
+    opacity: 1; /* expanded view: show actions without hover */
+}
+.scripts-list--expanded .tree-run-btn {
+    opacity: 1; /* expanded view: always show run */
+}
+
+/* Sets: swatch color picker (avoid native color dialog behind CEP) */
+.set-color-picker {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex: 1;
+    justify-content: flex-end;
+}
+.set-color-swatches {
+    display: inline-flex;
+    gap: 6px;
+    align-items: center;
+}
+.set-color-swatch {
+    width: 18px;
+    height: 18px;
+    border-radius: 4px;
+    border: 1px solid var(--border-strong);
+    background: var(--swatch, #999);
+    cursor: pointer;
+    padding: 0;
+    outline: none;
+}
+.set-color-swatch:hover {
+    border-color: var(--text-secondary);
+}
+.set-color-swatch.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent);
 }
 .script-row:hover .script-row-right {
     opacity: 1;

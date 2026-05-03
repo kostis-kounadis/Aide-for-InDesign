@@ -354,11 +354,21 @@
             </div>
             <div class="setting-row">
                 <label for="set-overlay-icon">Icon (emoji)</label>
-                <input type="text" id="set-overlay-icon" placeholder="📦" maxlength="2" style="width: 50px;">
+                <input type="text" id="set-overlay-icon" placeholder="📦" maxlength="8" style="width: 70px;">
             </div>
             <div class="setting-row">
                 <label for="set-overlay-color">Color</label>
-                <input type="color" id="set-overlay-color" value="#E8A838">
+                <div class="set-color-picker">
+                    <div class="set-color-swatches" id="set-color-swatches" aria-label="Choose set color">
+                        <button type="button" class="set-color-swatch" data-color="#E8A838" style="--swatch:#E8A838" title="#E8A838"></button>
+                        <button type="button" class="set-color-swatch" data-color="#5B8DEF" style="--swatch:#5B8DEF" title="#5B8DEF"></button>
+                        <button type="button" class="set-color-swatch" data-color="#4CAF50" style="--swatch:#4CAF50" title="#4CAF50"></button>
+                        <button type="button" class="set-color-swatch" data-color="#E05252" style="--swatch:#E05252" title="#E05252"></button>
+                        <button type="button" class="set-color-swatch" data-color="#B37BFF" style="--swatch:#B37BFF" title="#B37BFF"></button>
+                        <button type="button" class="set-color-swatch" data-color="#7A7A7A" style="--swatch:#7A7A7A" title="#7A7A7A"></button>
+                    </div>
+                    <input type="text" id="set-overlay-color" value="#E8A838" placeholder="#RRGGBB" inputmode="text" style="width: 86px; font-family: var(--font-mono);">
+                </div>
             </div>
             <div class="overlay-actions">
                 <button type="button" class="btn-secondary" id="set-overlay-cancel">Cancel</button>

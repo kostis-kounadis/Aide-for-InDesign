@@ -1690,12 +1690,25 @@ document.addEventListener('DOMContentLoaded', () => {
     
     function showSetOverlay(existingSet) {
         if (!dom.setOverlay) return;
+        function normalizeHex(v) {
+            const s = String(v || '').trim();
+            if (!s) return '';
+            const up = s.charAt(0) === '#' ? s.toUpperCase() : ('#' + s.toUpperCase());
+            return /^#[0-9A-F]{6}$/.test(up) ? up : '';
+        }
+        function syncSetSwatches(color) {
+            const wrap = document.getElementById('set-color-swatches');
+            if (!wrap) return;
+            const btns = Array.prototype.slice.call(wrap.querySelectorAll('.set-color-swatch'));
+            btns.forEach(b => b.classList.toggle('active', String(b.getAttribute('data-color') || '').toUpperCase() === String(color || '').toUpperCase()));
+        }
+
         if (existingSet) {
             editingSetPath = existingSet._path;
             dom.setOverlayTitle.textContent = 'Edit Set';
             dom.setOverlayName.value = existingSet.name || '';
             dom.setOverlayIcon.value = existingSet.icon || '📦';
-            dom.setOverlayColor.value = existingSet.color || '#E8A838';
+            dom.setOverlayColor.value = normalizeHex(existingSet.color) || '#E8A838';
         } else {
             editingSetPath = null;
             dom.setOverlayTitle.textContent = 'Create New Set';
@@ -1703,6 +1716,7 @@ document.addEventListener('DOMContentLoaded', () => {
             dom.setOverlayIcon.value = '📦';
             dom.setOverlayColor.value = '#E8A838';
         }
+        syncSetSwatches(dom.setOverlayColor.value);
         dom.setOverlay.classList.remove('hidden');
         dom.setOverlayName.focus();
     }
@@ -1741,6 +1755,29 @@ document.addEventListener('DOMContentLoaded', () => {
     if (dom.setOverlay) {
         dom.setOverlay.addEventListener('click', (e) => {
             if (e.target === dom.setOverlay) hideSetOverlay();
+        });
+    }
+    // Set color swatches (avoid native color picker behind CEP)
+    const setSwatches = $id('set-color-swatches');
+    if (setSwatches && dom.setOverlayColor) {
+        setSwatches.addEventListener('click', (e) => {
+            const btn = e.target.closest('.set-color-swatch');
+            if (!btn) return;
+            const c = String(btn.getAttribute('data-color') || '').trim();
+            if (!c) return;
+            dom.setOverlayColor.value = c;
+            const btns = Array.prototype.slice.call(setSwatches.querySelectorAll('.set-color-swatch'));
+            btns.forEach(b => b.classList.toggle('active', b === btn));
+        });
+    }
+    if (dom.setOverlayColor) {
+        dom.setOverlayColor.addEventListener('input', () => {
+            // live sync swatch active state if exact match
+            const val = String(dom.setOverlayColor.value || '').trim().toUpperCase();
+            const wrap = $id('set-color-swatches');
+            if (!wrap) return;
+            const btns = Array.prototype.slice.call(wrap.querySelectorAll('.set-color-swatch'));
+            btns.forEach(b => b.classList.toggle('active', String(b.getAttribute('data-color') || '').toUpperCase() === val));
         });
     }
     if (dom.setOverlaySave) {
