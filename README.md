@@ -1,10 +1,17 @@
-# Aide for InDesign
+<p align="center">
+  <img src="https://img.shields.io/badge/Adobe-InDesign-FF3366?style=for-the-badge&logo=adobeindesign&logoColor=white" alt="InDesign">
+  <img src="https://img.shields.io/badge/CEP-Extension-333333?style=for-the-badge" alt="CEP">
+  <img src="https://img.shields.io/badge/License-MIT-blue?style=for-the-badge" alt="MIT License">
+</p>
+<p align="center">
+  <a href="https://buymeacoffee.com/kostiskounadis" target="_blank"><img src="https://img.shields.io/badge/Buy_Me_A_Beer-FFDD00?style=for-the-badge&logo=buy-me-a-coffee&logoColor=black" alt="Buy me a beer"></a>
+</p>
 
-> AI assistant for Adobe InDesign — generate and execute ExtendScript from natural language using local (Ollama) or cloud AI providers.
+# Aide — AI Assistant for Adobe InDesign
 
-Aide is a CEP panel that lives inside Adobe InDesign and acts as your AI scripting assistant and script manager. Describe what you want in plain English — Aide generates the ExtendScript code, previews it, and lets you execute it with one click. Save your scripts, organize them into sets, star your favorites, and easily run them from a compact library.
+**Aide** is a CEP panel that lives inside Adobe InDesign and acts as your AI scripting assistant and script manager. Describe what you want in plain English — Aide generates the ExtendScript code, previews it, and lets you execute it with one click. Save your scripts, organize them into sets, star your favorites, and easily run them from a compact library.
 
-Works with local AI models (via [Ollama](https://ollama.com)), or cloud providers like Google Gemini, OpenAI, Anthropic, and any OpenAI-compatible endpoint.
+Works with **local AI models** (via [Ollama](https://ollama.com)), or cloud providers like **Google Gemini**, **OpenAI**, **Anthropic**, and any **OpenAI-compatible endpoint**.
 
 ## ✨ Features
 
@@ -23,7 +30,17 @@ Works with local AI models (via [Ollama](https://ollama.com)), or cloud provider
 - **Compact View**: Optimized for high-density script management.
 
 ## 📸 Screenshots
-*(Coming soon — add your screenshots to the `/screenshots` folder and link them here)*
+
+![Aide Chat](screenshots/Screenshot%202026-05-04%20at%2015.37.20.png)
+*The Chat interface allows for natural language prompting and live ExtendScript generation with code preview.*
+
+| | |
+|:---:|:---:|
+| ![Aide Scripts](screenshots/Screenshot%202026-05-04%20at%2015.37.51.png) | ![Aide Search](screenshots/Screenshot%202026-05-04%20at%2015.38.33.png) |
+| The Scripts tab features a high-performance, IDE-like file tree for navigating local ExtendScript files and folders. | Real-time filtering and search enable quick access to specific scripts within complex directory structures. |
+| ![Aide Sets](screenshots/Screenshot%202026-05-04%20at%2015.39.07.png) | ![Aide Settings](screenshots/Screenshot%202026-05-04%20at%2015.39.31.png) |
+| Script Sets provide a way to organize frequently used scripts into logical collections for improved efficiency. | The Settings tab offers comprehensive control over LLM providers, model selection, and script folder indexing. |
+
 
 ## 🚀 Getting Started
 
@@ -99,3 +116,12 @@ Aide/
 
 ## 📜 License
 MIT — see [LICENSE](LICENSE) for details.
+
+---
+
+## 🙏 Acknowledgements
+
+- [Ollama](https://ollama.com) — Local AI model runtime
+- [Adobe CEP Resources](https://github.com/Adobe-CEP/CEP-Resources) — CEP framework and CSInterface.js
+
+Built with the help of AI coding assistants. Designed and directed by a graphic designer who got tired of doing repetitive InDesign tasks by hand.
