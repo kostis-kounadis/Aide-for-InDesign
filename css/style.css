@@ -632,23 +632,24 @@ body {
    ═══════════════════════════════════════ */
 .scripts-toolbar {
     display: flex;
-    flex-direction: column;
-    gap: 8px;
-    padding: 8px 10px;
+    align-items: center;
+    justify-content: space-between;
+    gap: 6px;
+    padding: 6px 10px;
     border-bottom: 1px solid var(--border);
     flex-shrink: 0;
 }
-.scripts-toolbar-row {
+.scripts-toolbar-actions {
     display: flex;
     align-items: center;
-    width: 100%;
+    gap: 4px;
+    flex-shrink: 0;
 }
-.scripts-toolbar-actions {
-    gap: 6px;
-    justify-content: flex-start;
-}
+/* Search bar pinned to the bottom of the scripts tab */
 .scripts-search-bar {
-    width: 100%;
+    flex-shrink: 0;
+    padding: 6px 10px;
+    border-top: 1px solid var(--border);
 }
 .scripts-search-wrap {
     position: relative;
@@ -736,11 +737,12 @@ body {
     color: var(--accent);
 }
 /* Light version: view toggle removed */
-.scripts-toolbar-refresh {
-    flex-shrink: 0;
-    height: 26px;
-    padding: 0 8px;
-    font-size: 10px;
+.scripts-toolbar-refresh.is-loading svg {
+    animation: spin 0.8s linear infinite;
+}
+@keyframes spin {
+    from { transform: rotate(0deg); }
+    to   { transform: rotate(360deg); }
 }
 .scripts-local-actions {
     padding: 4px 10px 6px;
@@ -911,6 +913,7 @@ body {
 .code-action-btn--icon {
     padding: 2px 5px;
     min-width: 26px;
+    min-height: 26px;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -1804,7 +1807,7 @@ input:checked + .toggle-slider::before {
 .scripts-list {
     /* ── Step 4: unified tree design tokens ── */
     --tree-row-height:  22px;   /* strict grid — all rows snap here */
-    --tree-indent-unit: 16px;   /* one level of depth indentation */
+    --tree-indent-unit: 20px;   /* one level of depth indentation */
     --tree-chevron-w:   10px;   /* rendered width of the chevron icon */
     /* Legacy aliases kept for any remaining references */
     --row-h:        var(--tree-row-height);
@@ -1842,8 +1845,6 @@ input:checked + .toggle-slider::before {
     position: relative;
     padding-left: 0;
     margin-left: 0; /* Guide line is handled by ::before, do not shift layout */
-    content-visibility: auto;
-    contain-intrinsic-size: 0 auto;
 }
 
 .script-folder > .folder-children::before {
@@ -1854,17 +1855,17 @@ input:checked + .toggle-slider::before {
     width: 1px;
     background-color: var(--border);
     /*
-     * Guide-line geometry (Step 4):
-     * The folder row's content starts at: 8px + depth * --tree-indent-unit
-     * The chevron is the first element in that content area, width = --tree-chevron-w
-     * Guide line must sit at the chevron's horizontal centre:
-     *   offset = 8px + depth * unit + (chevron-w / 2)
-     * --tree-depth is set directly on the .script-folder element by JS (style="--tree-depth:N")
+     * Guide-line geometry:
+     * The parent folder-row has: border-left(2px) + padding-left(6px + depth*20px)
+     * So the chevron starts at: 2 + 6 + depth*20 = 8 + depth*20
+     * Chevron center is at: 8 + depth*20 + 10/2 = 13 + depth*20
+     * But ::before is positioned relative to .folder-children which has no border,
+     * so we use the raw offset from the container edge.
      */
     left: calc(
-        8px +
-        var(--tree-depth, 0) * var(--tree-indent-unit, 12px) +
-        var(--tree-chevron-w, 10px) / 2
+        8px
+        + var(--tree-depth, 0) * var(--tree-indent-unit, 20px)
+        + var(--tree-chevron-w, 10px) / 2
     );
 }
 
@@ -1875,8 +1876,13 @@ input:checked + .toggle-slider::before {
     /* Hard-lock to grid; no min-height so rows don't stretch on long names */
     height: var(--tree-row-height, 22px);
     padding: var(--row-pad-v, 2px) 8px;
-    /* Unified indent: same token as the guide-line margin-left calculation */
-    padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent-unit, 12px));
+    /*
+     * Indent formula: 6px base + depth * 20px
+     * The 2px border-left is part of box-sizing, so visual content starts
+     * at border(2) + padding(6 + depth*20) from the left edge.
+     * Depth 0 content starts at 8px, depth 1 at 28px, depth 2 at 48px, etc.
+     */
+    padding-left: calc(6px + var(--tree-depth, 0) * var(--tree-indent-unit, 20px));
     cursor: pointer;
     border-radius: var(--radius);
     border-left: 2px solid transparent;   /* reserve space for hover accent */
@@ -1967,11 +1973,6 @@ input:checked + .toggle-slider::before {
 }
 
 /* ── Script file row ── */
-@keyframes rowIn {
-    from { opacity: 0; transform: translateX(-3px); }
-    to   { opacity: 1; transform: translateX(0); }
-}
-
 .script-row {
     display: flex;
     align-items: center;
@@ -1979,8 +1980,8 @@ input:checked + .toggle-slider::before {
     /* Hard-lock to grid */
     height: var(--tree-row-height, 22px);
     padding: var(--row-pad-v, 2px) 8px;
-    /* Unified indent — matches folder-row and guide-line calculation */
-    padding-left: calc(8px + var(--tree-depth, 0) * var(--tree-indent-unit, 12px));
+    /* Unified indent — matches folder-row: 6px base + depth * 20px */
+    padding-left: calc(6px + var(--tree-depth, 0) * var(--tree-indent-unit, 20px));
     border-radius: var(--radius);
     border-left: 2px solid transparent;   /* reserve space for hover accent */
     transition:
@@ -1992,8 +1993,6 @@ input:checked + .toggle-slider::before {
     cursor: default;
     position: relative;
     contain: layout style;
-    animation: rowIn 0.16s ease-out both;
-    animation-delay: calc(var(--row-idx, 0) * 15ms);
 }
 /* Alternating row shading */
 .script-row:nth-child(even) {
@@ -2009,19 +2008,7 @@ input:checked + .toggle-slider::before {
     border-left-color: var(--aide-accent);
 }
 
-/* Stagger animation for first 12 rows */
-.script-row:nth-child(1)  { --row-idx: 0; }
-.script-row:nth-child(2)  { --row-idx: 1; }
-.script-row:nth-child(3)  { --row-idx: 2; }
-.script-row:nth-child(4)  { --row-idx: 3; }
-.script-row:nth-child(5)  { --row-idx: 4; }
-.script-row:nth-child(6)  { --row-idx: 5; }
-.script-row:nth-child(7)  { --row-idx: 6; }
-.script-row:nth-child(8)  { --row-idx: 7; }
-.script-row:nth-child(9)  { --row-idx: 8; }
-.script-row:nth-child(10) { --row-idx: 9; }
-.script-row:nth-child(11) { --row-idx: 10; }
-.script-row:nth-child(n+12) { --row-idx: 11; }
+
 
 /* ── Play button — LEFT of name ── */
 .tree-run-btn {
@@ -2421,13 +2408,14 @@ input:checked + .toggle-slider::before {
     align-items: center;
     gap: 8px;
     height: var(--tree-row-height, 22px);
+    box-sizing: border-box;
     padding: var(--row-pad-v, 2px) 12px var(--row-pad-v, 2px) 12px; /* Slight extra padding for card */
     font-size: var(--font-sz, 11px);
     color: var(--text-primary);
     border-left: 2px solid transparent;
     transition: background var(--aide-transition), border-color var(--aide-transition);
 }
-.set-script-row > span {
+.set-script-row > span:last-child {
     flex: 1;
     min-width: 0;
     overflow: hidden;

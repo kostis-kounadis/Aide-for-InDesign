@@ -64,6 +64,8 @@ document.addEventListener('DOMContentLoaded', () => {
         scriptsExpandAllBtn:  $id('scripts-expand-all'),
         scriptsCollapseAllBtn: $id('scripts-collapse-all'),
         scriptsRefreshBtn:  $id('scripts-refresh-btn'),
+        scriptsToolbarActions: $id('scripts-toolbar-actions'),
+        scriptsSearchBar:     $id('scripts-search-bar'),
         autoRunCheckbox:    $id('auto-run-checkbox'),
         // Step 5: Tree overflow menu
         treeOverflowMenu:    $id('tree-overflow-menu'),
@@ -896,12 +898,21 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function syncScriptsSubtabUI() {
         const isLocal = scriptsSubTab === 'local';
+        const isSets  = scriptsSubTab === 'sets';
+        const isFavs  = scriptsSubTab === 'favs';
         if (dom.scriptsSubtabLocal) dom.scriptsSubtabLocal.classList.toggle('active', isLocal);
-        if (dom.scriptsSubtabSets) dom.scriptsSubtabSets.classList.toggle('active', scriptsSubTab === 'sets');
-        if (dom.scriptsSubtabFavs) dom.scriptsSubtabFavs.classList.toggle('active', scriptsSubTab === 'favs');
-        
+        if (dom.scriptsSubtabSets) dom.scriptsSubtabSets.classList.toggle('active', isSets);
+        if (dom.scriptsSubtabFavs) dom.scriptsSubtabFavs.classList.toggle('active', isFavs);
+
+        // Expand/Collapse only on Local
         if (dom.scriptsExpandAllBtn) dom.scriptsExpandAllBtn.classList.toggle('hidden', !isLocal);
         if (dom.scriptsCollapseAllBtn) dom.scriptsCollapseAllBtn.classList.toggle('hidden', !isLocal);
+
+        // Hide ALL action buttons on Sets and Favs
+        if (dom.scriptsToolbarActions) dom.scriptsToolbarActions.classList.toggle('hidden', isSets || isFavs);
+
+        // Hide search on Sets
+        if (dom.scriptsSearchBar) dom.scriptsSearchBar.classList.toggle('hidden', isSets);
     }
 
     function syncViewToggleBtn() {
@@ -914,7 +925,7 @@ document.addEventListener('DOMContentLoaded', () => {
     async function runScriptsToolbarRefresh() {
         if (dom.scriptsRefreshBtn) {
             dom.scriptsRefreshBtn.disabled = true;
-            dom.scriptsRefreshBtn.textContent = '…';
+            dom.scriptsRefreshBtn.classList.add('is-loading');
         }
         try {
             if (scriptsSubTab === 'local') {
@@ -933,7 +944,7 @@ document.addEventListener('DOMContentLoaded', () => {
         } finally {
             if (dom.scriptsRefreshBtn) {
                 dom.scriptsRefreshBtn.disabled = false;
-                dom.scriptsRefreshBtn.textContent = '↻';
+                dom.scriptsRefreshBtn.classList.remove('is-loading');
             }
         }
     }
@@ -1366,15 +1377,7 @@ document.addEventListener('DOMContentLoaded', () => {
                 evalScriptSafe(`revealLocalFileInFinder(${JSON.stringify(path)})`, () => {});
             }
         }
-        if (action === 'edit-desc') {
-            const dkey = AideScripts.descKeyLocal(path);
-            const cur  = AideScripts.getScriptDescription(dkey);
-            const newDesc = prompt('Description for\n' + name + ':', cur);
-            if (newDesc !== null) {
-                AideScripts.setScriptDescription(dkey, newDesc.trim());
-                // No re-render needed — description not shown in tree rows
-            }
-        }
+
         if (action === 'add-to-set') {
             showAddToSetPrompt(path, name);
         }

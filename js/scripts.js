@@ -103,19 +103,6 @@ const AideScripts = (() => {
         return newState;
     }
 
-    // ──────────────────────────────────────────────
-    // Description key helpers — uniquely identify a script for descriptions map
-    // ──────────────────────────────────────────────
-
-    /** Key for a locally-stored disk script (by filesystem path) */
-    function descKeyLocal(path) {
-        return 'local:' + String(path || '');
-    }
-
-    /** Key for an Aide saved-from-chat script (by id) */
-    function descKeyAide(id) {
-        return 'aide:' + String(id || '');
-    }
 
     function migrateFolderToArray() {
         try {
@@ -863,8 +850,7 @@ const AideScripts = (() => {
     return {
         // ── Saved-from-chat scripts CRUD ──
         loadAll, getById, save, remove, update, toggleFavorite,
-        // ── Description key helpers ──
-        descKeyLocal, descKeyAide,
+
         // ── Local script folders ──
         getScriptsFolder, setScriptsFolder, getScriptFolders, setScriptFolders, addScriptFolder, removeScriptFolder,
         setFolderOpen, isFolderOpen, expandAllFolders, collapseAllFolders,

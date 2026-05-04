@@ -97,22 +97,12 @@
         <!-- ─── Scripts Tab (launcher) ─── -->
         <main class="tab-content" id="view-scripts">
             <div class="scripts-toolbar">
-                <div class="scripts-toolbar-row">
-                    <div class="scripts-subtabs" role="tablist">
-                        <button type="button" class="scripts-subtab active" data-scripts-subtab="local" id="scripts-subtab-local" role="tab">Local</button>
-                        <button type="button" class="scripts-subtab" data-scripts-subtab="sets" id="scripts-subtab-sets" role="tab">Sets</button>
-                        <button type="button" class="scripts-subtab" data-scripts-subtab="favs" id="scripts-subtab-favs" role="tab">Favs</button>
-                    </div>
+                <div class="scripts-subtabs" role="tablist">
+                    <button type="button" class="scripts-subtab active" data-scripts-subtab="local" id="scripts-subtab-local" role="tab">Local</button>
+                    <button type="button" class="scripts-subtab" data-scripts-subtab="sets" id="scripts-subtab-sets" role="tab">Sets</button>
+                    <button type="button" class="scripts-subtab" data-scripts-subtab="favs" id="scripts-subtab-favs" role="tab">Favs</button>
                 </div>
-                
-                <div class="scripts-toolbar-row scripts-search-bar">
-                    <div class="scripts-search-wrap" role="search">
-                        <input type="text" class="search-input" id="scripts-search" placeholder="Search…" title="Search scripts">
-                        <button type="button" class="scripts-search-clear" id="scripts-search-clear" title="Clear search" aria-label="Clear search" disabled>✕</button>
-                    </div>
-                </div>
-
-                <div class="scripts-toolbar-row scripts-toolbar-actions">
+                <div class="scripts-toolbar-actions" id="scripts-toolbar-actions">
                     <button type="button" class="code-action-btn scripts-star-filter-btn" id="scripts-star-filter-btn" title="Show starred only">☆</button>
                     <button type="button" class="code-action-btn code-action-btn--icon scripts-show-hidden-btn hidden" id="scripts-show-hidden-btn" title="Show hidden scripts">
                         <svg class="eye-on" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
@@ -126,7 +116,6 @@
                             <line x1="1" y1="1" x2="23" y2="23"></line>
                         </svg>
                     </button>
-                    <div style="flex: 1;"></div>
                     <button type="button" class="code-action-btn code-action-btn--icon" id="scripts-expand-all" title="Expand All">
                         <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
                             <polyline points="7 13 12 18 17 13"></polyline>
@@ -139,7 +128,12 @@
                             <polyline points="7 18 12 13 17 18"></polyline>
                         </svg>
                     </button>
-                    <button type="button" class="code-action-btn scripts-toolbar-refresh" id="scripts-refresh-btn" title="Refresh list">↻</button>
+                    <button type="button" class="code-action-btn code-action-btn--icon scripts-toolbar-refresh" id="scripts-refresh-btn" title="Refresh list">
+                        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                            <polyline points="23 4 23 10 17 10"></polyline>
+                            <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+                        </svg>
+                    </button>
                 </div>
             </div>
             <div class="scripts-list" id="scripts-list">
@@ -150,6 +144,12 @@
                     </svg>
                     <p class="scripts-empty-title">No saved scripts yet</p>
                     <p class="empty-hint scripts-empty-hint">Scripts you save from chat will appear here</p>
+                </div>
+            </div>
+            <div class="scripts-search-bar" id="scripts-search-bar">
+                <div class="scripts-search-wrap" role="search">
+                    <input type="text" class="search-input" id="scripts-search" placeholder="Search…" title="Search scripts">
+                    <button type="button" class="scripts-search-clear" id="scripts-search-clear" title="Clear search" aria-label="Clear search" disabled>✕</button>
                 </div>
             </div>
         </main>
@@ -324,7 +324,7 @@
         <button class="tree-overflow-item" data-overflow-action="fav"         id="tom-fav">★ Favorite</button>
         <button class="tree-overflow-item" data-overflow-action="copy-path"   id="tom-copy">📋 Copy Path</button>
         <button class="tree-overflow-item" data-overflow-action="reveal"      id="tom-reveal">🗂 Reveal in Finder</button>
-        <button class="tree-overflow-item" data-overflow-action="edit-desc"   id="tom-desc">📝 Edit Description</button>
+
         <button class="tree-overflow-item" data-overflow-action="add-to-set" id="tom-add-to-set">📦 Add to Set</button>
         <button class="tree-overflow-item danger" data-overflow-action="hide" id="tom-hide">🙈 Hide</button>
     </div>

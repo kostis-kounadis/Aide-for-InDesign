@@ -133,7 +133,7 @@ try {
 • Mac paths: "/Users/name/file.indd" or "~/Desktop/file.indd"`;
 
     // ═══════════════════════════════════════════════════════════════
-    // CONDITIONAL MODULES — injected only when relevant keywords detected.
+    // CONDITIONAL MODULES — injected based on user settings.
     // ═══════════════════════════════════════════════════════════════
 
     const MODULE_SCRIPTUI = `
