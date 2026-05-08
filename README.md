@@ -10,7 +10,9 @@
 # Aide — AI Assistant for Adobe InDesign
 
 > [!CAUTION]
-> **STABILITY ALERT:** The current release (v1.0) has identified critical bugs affecting script execution and UI stability. We are working on a hotfix immediately. If you are using this in a production environment, please exercise caution or wait for the upcoming stability update.
+> **STABILITY ALERT:** Upon public testing, the current release (v1.0) has identified critical bugs affecting script execution and UI stability. Specifically:
+- The prompt seems to break both local models as well as cloud providers, as it is rather complex.
+- Adding Sets does not work.
 
 **Aide** is a CEP panel that lives inside Adobe InDesign and acts as your AI scripting assistant and script manager. Describe what you want in plain English — Aide generates the ExtendScript code, previews it, and lets you execute it with one click. Save your scripts, organize them into sets, star your favorites, and easily run them from a compact library.
 
