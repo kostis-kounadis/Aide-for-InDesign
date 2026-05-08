@@ -77,6 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
         setOverlayColor:     $id('set-overlay-color'),
         setOverlaySave:      $id('set-overlay-save'),
         setOverlayCancel:    $id('set-overlay-cancel'),
+        // Add to Set Overlay
+        addToSetOverlay:     $id('add-to-set-overlay'),
+        addToSetCloseBtn:    $id('add-to-set-close-btn'),
+        addToSetScriptName:  $id('add-to-set-script-name'),
+        addToSetList:        $id('add-to-set-list'),
         // Overlay
         aideOverlay:         $id('aide-overlay'),
         overlayCloseBtn:     $id('overlay-close-btn'),
@@ -1126,10 +1131,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const raw = String(value || '');
             try { return decodeURIComponent(raw); } catch (e) { return raw.replace(/%20/g, ' '); }
         };
-        const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
+        const q     = (dom.scriptsSearchBar.value || '').toLowerCase().trim();
 
         if (localSetsData.length === 0 && !q) {
-            dom.scriptsList.innerHTML = `<button class="create-set-full-btn" id="create-new-set-btn" style="margin-top:20px">+ Create New Set</button>`;
+            dom.scriptsList.innerHTML = `<button class="create-set-full-btn" id="create-new-set-btn" style="margin-top:20px">Add New Set</button>`;
             return;
         }
 
@@ -1162,7 +1167,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     </details>`;
                 }).join('')}
             </div>
-            <button class="create-set-full-btn" id="create-new-set-btn">+ Create New Set</button>
+            <button class="create-set-full-btn" id="create-new-set-btn">Add New Set</button>
         `;
     }
 
@@ -1220,7 +1225,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderFavsPanel() {
         const enc = p => encodeURIComponent(p);
         const esc = AideUtils.escapeHtml;
-        const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
+        const q     = (dom.scriptsSearchBar.value || '').toLowerCase().trim();
         const favs = Array.from(AideScripts.loadLocalFavorites());
         const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
         const fileIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>`;
@@ -1264,7 +1269,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Step 5: Render the hierarchical tree for the Local subtab ──
     function renderLocalTreePanel() {
-        const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
+        const q     = (dom.scriptsSearchBar.value || '').toLowerCase().trim();
         AideScripts.renderScriptTree(
             dom.scriptsList,
             dom.scriptsEmpty,
@@ -1379,7 +1384,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }
 
         if (action === 'add-to-set') {
-            showAddToSetPrompt(path, name);
+            showAddToSetOverlay(path, name);
         }
     }
 
@@ -1492,7 +1497,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function syncScriptsSearchClear() {
         if (!dom.scriptsSearchClear) return;
-        const has = !!(dom.scriptsSearch && dom.scriptsSearch.value && dom.scriptsSearch.value.trim());
+        const has = !!(dom.scriptsSearchBar && dom.scriptsSearchBar.value && dom.scriptsSearchBar.value.trim());
         dom.scriptsSearchClear.disabled = !has;
     }
 
@@ -1502,10 +1507,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (dom.scriptsSearchClear) {
         dom.scriptsSearchClear.addEventListener('click', () => {
-            dom.scriptsSearch.value = '';
+            dom.scriptsSearchBar.value = '';
             syncScriptsSearchClear();
             refreshScriptsList();
-            try { dom.scriptsSearch.focus(); } catch (e) { /* ignore */ }
+            try { dom.scriptsSearchBar.focus(); } catch (e) { /* ignore */ }
         });
         syncScriptsSearchClear();
     }
@@ -1600,13 +1605,13 @@ document.addEventListener('DOMContentLoaded', () => {
             editingSetPath = existingSet._path;
             dom.setOverlayTitle.textContent = 'Edit Set';
             dom.setOverlayName.value = existingSet.name || '';
-            dom.setOverlayIcon.value = existingSet.icon || '📦';
+            if (dom.setOverlayIcon) dom.setOverlayIcon.value = existingSet.icon || '📦';
             dom.setOverlayColor.value = normalizeHex(existingSet.color) || '#E8A838';
         } else {
             editingSetPath = null;
-            dom.setOverlayTitle.textContent = 'Create New Set';
+            dom.setOverlayTitle.textContent = 'Add New Set';
             dom.setOverlayName.value = '';
-            dom.setOverlayIcon.value = '📦';
+            if (dom.setOverlayIcon) dom.setOverlayIcon.value = '📦';
             dom.setOverlayColor.value = '#E8A838';
         }
         syncSetSwatches(dom.setOverlayColor.value);
@@ -1714,34 +1719,60 @@ document.addEventListener('DOMContentLoaded', () => {
 
     /* Delegated to unified scriptsList click handler below */
 
-    function showAddToSetPrompt(scriptPath, scriptName) {
+    function showAddToSetOverlay(scriptPath, scriptName) {
+        if (!dom.addToSetOverlay) return;
         if (!localSetsData.length) {
             alert("No Sets available. Create one in the Sets tab first.");
             return;
         }
-        const listStr = localSetsData.map((s, i) => `${i+1}) ${s.name}`).join('\n');
-        const ans = prompt(`Add ${scriptName} to which Set?\nEnter number:\n\n${listStr}`);
-        if (!ans) return;
-        const idx = parseInt(ans, 10) - 1;
-        if (idx >= 0 && idx < localSetsData.length) {
-            const targetSet = localSetsData[idx];
-            let newScripts = targetSet.scripts || [];
-            if (newScripts.indexOf(scriptPath) === -1) {
-                newScripts.push(scriptPath);
-                // Save it
-                const setJson = JSON.stringify({
-                    name: targetSet.name,
-                    icon: targetSet.icon,
-                    color: targetSet.color,
-                    scripts: newScripts,
-                    created: targetSet.created || new Date().toISOString(),
-                    modified: new Date().toISOString()
-                }, null, 2);
-                evalScriptSafe(`writeAideSet(${JSON.stringify(targetSet._path)}, ${JSON.stringify(setJson)})`, () => {
-                    runScriptsToolbarRefresh();
-                });
-            }
-        }
+
+        dom.addToSetScriptName.textContent = scriptName;
+        const listWrap = dom.addToSetList;
+        listWrap.innerHTML = '';
+
+        localSetsData.forEach(s => {
+            const btn = document.createElement('button');
+            btn.className = 'overlay-folder-btn';
+            btn.style.borderLeft = `3px solid ${s.color || '#E8A838'}`;
+            btn.innerHTML = `
+                <span style="margin-right:8px">${AideUtils.escapeHtml(s.icon || '📦')}</span>
+                <span>${AideUtils.escapeHtml(s.name)}</span>
+            `;
+            btn.onclick = () => {
+                let newScripts = s.scripts || [];
+                if (newScripts.indexOf(scriptPath) === -1) {
+                    newScripts.push(scriptPath);
+                    const setJson = JSON.stringify({
+                        name: s.name,
+                        icon: s.icon,
+                        color: s.color,
+                        scripts: newScripts,
+                        created: s.created || new Date().toISOString(),
+                        modified: new Date().toISOString()
+                    }, null, 2);
+                    evalScriptSafe(`writeAideSet(${JSON.stringify(s._path)}, ${JSON.stringify(setJson)})`, () => {
+                        hideAddToSetOverlay();
+                        runScriptsToolbarRefresh();
+                    });
+                } else {
+                    hideAddToSetOverlay();
+                }
+            };
+            listWrap.appendChild(btn);
+        });
+
+        dom.addToSetOverlay.classList.remove('hidden');
+    }
+
+    function hideAddToSetOverlay() {
+        if (dom.addToSetOverlay) dom.addToSetOverlay.classList.add('hidden');
+    }
+
+    if (dom.addToSetCloseBtn) dom.addToSetCloseBtn.addEventListener('click', hideAddToSetOverlay);
+    if (dom.addToSetOverlay) {
+        dom.addToSetOverlay.addEventListener('click', (e) => {
+            if (e.target === dom.addToSetOverlay) hideAddToSetOverlay();
+        });
     }
 
     function downloadJsxFile(name, code) {
