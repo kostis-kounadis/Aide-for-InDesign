@@ -480,7 +480,7 @@ function listLocalScriptsFoldersJson(foldersJSON) {
  */
 function readLocalScriptFile(pathStr) {
     try {
-        var f = new File(pathStr);
+        var f = new File(aideResolveUserPath(pathStr));
         if (!f.exists) return 'Error: File not found.';
         f.open('r');
         f.encoding = 'UTF-8';
@@ -497,7 +497,7 @@ function readLocalScriptFile(pathStr) {
  */
 function writeLocalScriptFile(pathStr, codeStr) {
     try {
-        var f = new File(pathStr);
+        var f = new File(aideResolveUserPath(pathStr));
         f.open('w');
         f.encoding = 'UTF-8';
         f.write(codeStr);
@@ -513,7 +513,7 @@ function writeLocalScriptFile(pathStr, codeStr) {
  */
 function revealLocalFileInFinder(pathStr) {
     try {
-        var f = new File(pathStr);
+        var f = new File(aideResolveUserPath(pathStr));
         if (!f.exists) return 'Error: File not found.';
         var parent = f.parent;
         if (parent && parent.exists) {
@@ -609,7 +609,7 @@ function readAideSetsJson(foldersJSON) {
  */
 function writeAideSet(pathStr, jsonStr) {
     try {
-        var f = new File(pathStr);
+        var f = new File(aideResolveUserPath(pathStr));
         f.open('w');
         f.encoding = 'UTF-8';
         f.write(jsonStr);
@@ -625,7 +625,7 @@ function writeAideSet(pathStr, jsonStr) {
  */
 function deleteAideSet(pathStr) {
     try {
-        var f = new File(pathStr);
+        var f = new File(aideResolveUserPath(pathStr));
         if (f.exists) {
             f.remove();
             return 'Deleted: ' + f.fsName;
