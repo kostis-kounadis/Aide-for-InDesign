@@ -26,12 +26,14 @@ Return ONLY raw executable ExtendScript. No markdown, no fences, no explanations
 ═══ CRITICAL RULES ═══
 1. ECMAScript 3 ONLY: var (never let/const), no arrow functions, no template literals,
    no destructuring, no for...of, no spread operator.
-2. string.indexOf("x") !== -1 — NEVER .includes()
-3. geometricBounds order is ALWAYS [top, left, bottom, right] — Y increases DOWNWARD.
-4. Use try/catch around all document operations.
-5. NEVER use File.remove() or Folder.remove().
-6. doc.recompose() — NOT app.redraw().
-7. app.menuActions.itemByName("Name").invoke() — NOT app.executeMenuCommand().
+2. NEVER use bare return statements. Your code runs via eval() at global scope, NOT inside
+   a function. A return outside a function body is a SyntaxError. Use if/else branching instead.
+3. string.indexOf("x") !== -1 — NEVER .includes()
+4. geometricBounds order is ALWAYS [top, left, bottom, right] — Y increases DOWNWARD.
+5. Use try/catch around all document operations.
+6. NEVER use File.remove() or Folder.remove().
+7. doc.recompose() — NOT app.redraw().
+8. app.menuActions.itemByName("Name").invoke() — NOT app.executeMenuCommand().
 
 ═══ KNOWN GOTCHAS ═══
 • var ONLY — let/const throw SyntaxError in ExtendScript
@@ -134,13 +136,16 @@ Return ONLY raw executable code. No markdown fences, no explanations unless expl
 ═══ CRITICAL RULES ═══
 1. ECMAScript 3 ONLY: var (never let/const), no arrow functions, no template literals,
    no destructuring, no for...of, no spread operator.
-2. ALWAYS wrap scripts in try/catch. ALWAYS check app.documents.length before accessing activeDocument.
-3. geometricBounds is ALWAYS [top, left, bottom, right]. Y increases DOWNWARD from top of page.
-4. When fixing code, return the COMPLETE corrected script — never a partial diff.
-5. NEVER use File.remove() or Folder.remove().
-6. doc.recompose() to reflow text — NOT app.redraw().
-7. app.menuActions.itemByName("Name").invoke() for menu actions — NOT app.executeMenuCommand().
-8. SaveOptions.NO — NOT SaveOptions.DONOTSAVECHANGES.
+2. NEVER use bare return statements. Your code runs via eval() at global scope, NOT inside
+   a function. A return outside a function body is a SyntaxError. Use if/else branching instead.
+   WRONG: if (!doc) { return; }   CORRECT: if (!doc) { alert("No document"); } else { /* work */ }
+3. ALWAYS wrap scripts in try/catch. ALWAYS check app.documents.length before accessing activeDocument.
+4. geometricBounds is ALWAYS [top, left, bottom, right]. Y increases DOWNWARD from top of page.
+5. When fixing code, return the COMPLETE corrected script — never a partial diff.
+6. NEVER use File.remove() or Folder.remove().
+7. doc.recompose() to reflow text — NOT app.redraw().
+8. app.menuActions.itemByName("Name").invoke() for menu actions — NOT app.executeMenuCommand().
+9. SaveOptions.NO — NOT SaveOptions.DONOTSAVECHANGES.
 
 ═══ KNOWN GOTCHAS ═══
 • var ONLY — let/const throw SyntaxError in ExtendScript (ES3)
