@@ -43,11 +43,7 @@ document.addEventListener('DOMContentLoaded', () => {
         refreshModels:      $id('refresh-models-btn'),
         tempSlider:         $id('temperature-slider'),
         tempValue:          $id('temperature-value'),
-        modScriptui:        $id('mod-scriptui'),
-        modMenu:            $id('mod-menu'),
-        modExport:          $id('mod-export'),
-        modGradients:       $id('mod-gradients'),
-        modTokensLive:      $id('module-tokens-live'),
+        promptTierSelect:   $id('prompt-tier-select'),
         debugToggle:        $id('debug-toggle'),
         debugActions:       $id('debug-actions'),
         exportDebugBtn:     $id('export-debug-btn'),
@@ -2145,18 +2141,9 @@ document.addEventListener('DOMContentLoaded', () => {
             toggleDebugUI(cfg.debugLogging);
         }
 
-        // Prompt modules (2.7.3: always-on by default, opt-out via Advanced)
-        if (dom.modScriptui) {
-            dom.modScriptui.checked = localStorage.getItem('aide_module_scriptui') !== 'false';
-        }
-        if (dom.modMenu) {
-            dom.modMenu.checked = localStorage.getItem('aide_module_menu') !== 'false';
-        }
-        if (dom.modExport) {
-            dom.modExport.checked = localStorage.getItem('aide_module_export') !== 'false';
-        }
-        if (dom.modGradients) {
-            dom.modGradients.checked = localStorage.getItem('aide_module_gradients') !== 'false';
+        // Prompt tier (v3.1 — just restore the dropdown)
+        if (dom.promptTierSelect) {
+            dom.promptTierSelect.value = localStorage.getItem('aide_prompt_tier') || 'tier_2';
         }
 
         renderLocalFoldersSettings();
@@ -2301,36 +2288,15 @@ document.addEventListener('DOMContentLoaded', () => {
         AideModels.setConfig({ temperature: val });
     });
 
-    // 2.7.3: Module toggles are now simple opt-out checkboxes (no mode dropdown)
-    function updateModulesUI() {
-        // Update live token estimate
-        let tokens = 0;
-        if (dom.modScriptui?.checked) tokens += 300;
-        if (dom.modMenu?.checked) tokens += 400;
-        if (dom.modExport?.checked) tokens += 150;
-        if (dom.modGradients?.checked) tokens += 130;
-        
-        if (dom.modTokensLive) {
-            dom.modTokensLive.textContent = `Base + ${tokens} = ~${2080 + tokens}`;
-        }
+    // ── Prompt Tier wiring (v3.1 — simplified, modules baked into tiers) ──
+    if (dom.promptTierSelect) {
+        dom.promptTierSelect.addEventListener('change', () => {
+            const tier = dom.promptTierSelect.value;
+            try { localStorage.setItem('aide_prompt_tier', tier); } catch(e) {}
+            // Re-init conversation with the new tier
+            AideChat.newConversation();
+        });
     }
-
-    const moduleToggles = [
-        { el: dom.modScriptui, key: 'aide_module_scriptui' },
-        { el: dom.modMenu, key: 'aide_module_menu' },
-        { el: dom.modExport, key: 'aide_module_export' },
-        { el: dom.modGradients, key: 'aide_module_gradients' }
-    ];
-    
-    moduleToggles.forEach(mod => {
-        if (mod.el) {
-            mod.el.addEventListener('change', () => {
-                try { localStorage.setItem(mod.key, mod.el.checked); }
-                catch (e) { /* quota – ignore */ }
-                updateModulesUI();
-            });
-        }
-    });
 
     // Custom model input — enable/disable clear button
     dom.modelCustom.addEventListener('input', () => {

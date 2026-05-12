@@ -3,34 +3,40 @@
  * Conversation engine with full message history.
  * Uses /api/chat for Ollama, standard chat completions for remote.
  *
- * System prompt and modules now live in system-prompt.js (AideChatModules).
- * Token budget: ~1900 tokens core + up to ~980 optional modules.
- * Previously the auto-extracted DOM blob added ~1500 tokens unnecessarily.
+ * System prompt tiers live in system-prompt.js (AideChatModules).
+ * Three self-contained tiers: Safe (tier_1), Standard (tier_2), Expert (tier_3).
+ * No runtime assembly — each tier is a complete string.
  */
 
 const AideChat = (() => {
-    // Delegate to system-prompt.js — loaded before this script in index.html
-    const SYSTEM_PROMPT        = AideChatModules.SYSTEM_PROMPT;
-    const MODULE_SCRIPTUI      = AideChatModules.MODULE_SCRIPTUI;
-    const MODULE_MENU_COMMANDS = AideChatModules.MODULE_MENU_COMMANDS;
-    const MODULE_EXPORT        = AideChatModules.MODULE_EXPORT;
-    const MODULE_GRADIENTS     = AideChatModules.MODULE_GRADIENTS;
+
+    /**
+     * Resolve the system prompt from the active tier.
+     * Reads localStorage key 'aide_prompt_tier' (default: 'tier_2').
+     */
+    function _resolveBasePrompt() {
+        var tier;
+        try { tier = localStorage.getItem('aide_prompt_tier'); } catch(e) {}
+        switch (tier) {
+            case 'tier_1': return AideChatModules.PROMPT_TIER_1;
+            case 'tier_3': return AideChatModules.PROMPT_TIER_3;
+            default:       return AideChatModules.PROMPT_TIER_2;
+        }
+    }
 
     // Message history for current conversation
     let messages = [];
     let isGenerating = false;
     let _abortController = null; // active AbortController during generation
-    let stickyModules = new Set(); // Persistent module state per conversation
 
     /**
      * Start a fresh conversation
      */
     function newConversation() {
         messages = [
-            { role: 'system', content: SYSTEM_PROMPT }
+            { role: 'system', content: _resolveBasePrompt() }
         ];
         isGenerating = false;
-        stickyModules.clear();
     }
 
     /**
@@ -102,79 +108,15 @@ const AideChat = (() => {
     }
 
     /**
-     * Detect which conditional modules should be injected based on user text.
-     * Returns an array of module names: 'scriptui', 'menu', or both.
-     */
-    function detectModules(userText) {
-        const modules = [];
-
-        // Use RegExp with \\b word boundaries to prevent substring false positives (e.g., 'information' triggering 'form')
-        // FIX: Single backslash for word boundaries in RegExp literals
-        const uiPattern = /\b(dialog|window|button|panel|checkbox|dropdown|input field|slider|progress bar|interface|ui|gui|prompt user|ask user|user input|listbox|radiobutton|radio button|form|modal)\b/i;
-        if (uiPattern.test(userText)) {
-            modules.push('scriptui');
-        }
-
-        const menuPattern = /\b(menu|command|pathfinder|unite|minus front|intersect|exclude|divide|outline text|create outline|flatten|expand appearance|align|distribute|clipping mask|compound path|rasterize|send to front|send to back|bring forward|send backward|lock all|unlock all|hide object|show all|join path|offset path|select all|transform again)\b/i;
-        if (menuPattern.test(userText)) {
-            modules.push('menu');
-        }
-
-        const exportPattern = /\b(export|pdf|png|svg|save as)\b/i;
-        if (exportPattern.test(userText)) {
-            modules.push('export');
-        }
-
-        const gradientPattern = /\b(gradient|gradients|fade|color ramp|radial)\b/i;
-        if (gradientPattern.test(userText)) {
-            modules.push('gradients');
-        }
-
-        return modules;
-    }
-
-    /**
-     * Manage context window: keep system prompt + recent messages.
-     * Small models have 4-8K context; we keep it lean.
-     * Conditionally injects ScriptUI / Menu Commands modules when relevant.
-     */
-    /**
      * Build the messages array for the API call.
-     * 2.7.3: All modules are always-on by default. Users can opt-out via Advanced Settings.
+     * v3.1: System prompt is self-contained per tier — no runtime assembly.
      * Context window management trims old messages when conversation grows too long.
      */
     function getContextManagedMessages() {
         const systemMsg = messages[0]; // Always the system prompt
         const conversationMsgs = messages.slice(1);
 
-        // --- Always-on module injection with opt-out (2.7.3) ---
-        let enhancedSystemContent = systemMsg.content;
-
-        // Modules are enabled by default; check for explicit opt-out
-        const moduleDisabled = {
-            scriptui: localStorage.getItem('aide_module_scriptui') === 'false',
-            menu: localStorage.getItem('aide_module_menu') === 'false',
-            export: localStorage.getItem('aide_module_export') === 'false',
-            gradients: localStorage.getItem('aide_module_gradients') === 'false'
-        };
-
-        if (!moduleDisabled.scriptui) {
-            enhancedSystemContent += '\n\n' + MODULE_SCRIPTUI;
-        }
-        if (!moduleDisabled.menu) {
-            enhancedSystemContent += '\n\n' + MODULE_MENU_COMMANDS;
-        }
-        if (!moduleDisabled.export) {
-            enhancedSystemContent += '\n\n' + MODULE_EXPORT;
-        }
-        if (!moduleDisabled.gradients) {
-            enhancedSystemContent += '\n\n' + MODULE_GRADIENTS;
-        }
-
-        const enhancedSystem = { role: 'system', content: enhancedSystemContent };
-
-        // --- Token estimation & trimming ---
-        const allMsgs = [enhancedSystem, ...conversationMsgs];
+        const allMsgs = [systemMsg, ...conversationMsgs];
         const totalChars = allMsgs.reduce((t, m) => t + m.content.length, 0);
         const estimatedTokens = totalChars / 4;
 
@@ -194,7 +136,7 @@ const AideChat = (() => {
             content: '[Note: Earlier messages trimmed. Recent messages follow.]'
         };
 
-        return [enhancedSystem, contextNote, ...recentMsgs];
+        return [systemMsg, contextNote, ...recentMsgs];
     }
 
     /**
