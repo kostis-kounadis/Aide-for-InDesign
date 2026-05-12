@@ -1170,6 +1170,38 @@ body {
     letter-spacing: 0;
 }
 
+/* v3.0: Prompt Tier — API Markdown area */
+.tier3-api-area {
+    margin-top: 6px;
+    animation: tier3-reveal 0.2s ease;
+}
+@keyframes tier3-reveal {
+    from { opacity: 0; max-height: 0; }
+    to   { opacity: 1; max-height: 400px; }
+}
+.tier3-api-area textarea {
+    background: var(--bg-secondary);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    color: var(--text-primary);
+    padding: 6px 8px;
+    font-family: var(--font-mono);
+    font-size: 10px;
+    line-height: 1.45;
+    resize: vertical;
+    min-height: 60px;
+    max-height: 300px;
+    box-sizing: border-box;
+}
+.tier3-api-area textarea:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+.tier3-api-area textarea::placeholder {
+    color: var(--text-secondary);
+    opacity: 0.5;
+}
+
 .setting-row {
     display: flex;
     align-items: center;

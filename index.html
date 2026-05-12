@@ -255,24 +255,18 @@
                             <p class="setting-hint">Controls randomness of AI responses. Lower = more precise code. Higher = more creative. Applies to all providers. Recommended: 0.1–0.3 for code generation.</p>
                         </fieldset>
 
-                        <!-- Prompt Modules (opt-out) -->
+                        <!-- Prompt Tier -->
                         <fieldset class="settings-group">
-                            <legend>Prompt Modules <span class="module-hint">(unchecked = disabled from system prompt)</span></legend>
-                            <div class="setting-row setting-row--modules" style="flex-direction: column; align-items: flex-start; gap: 8px; margin-top: 4px; margin-bottom: 2px;">
-                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
-                                    <input type="checkbox" id="mod-scriptui" data-mod="scriptui" checked> ScriptUI Dialogs (~300 tokens)
-                                </label>
-                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
-                                    <input type="checkbox" id="mod-menu" data-mod="menu" checked> Menu Commands (~400 tokens)
-                                </label>
-                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
-                                    <input type="checkbox" id="mod-export" data-mod="export" checked> Export / Save (~150 tokens)
-                                </label>
-                                <label class="toggle-wrap" style="display: flex; gap: 8px; cursor: pointer; font-size: 11px;">
-                                    <input type="checkbox" id="mod-gradients" data-mod="gradients" checked> Gradients & Effects (~130 tokens)
-                                </label>
+                            <legend>Prompt Tier</legend>
+                            <div class="setting-row">
+                                <label for="prompt-tier-select">System prompt</label>
+                                <select id="prompt-tier-select">
+                                    <option value="tier_1">Safe — core rules only (~800 tokens)</option>
+                                    <option value="tier_2" selected>Standard — full reference (~3400 tokens)</option>
+                                    <option value="tier_3">Expert — Standard + API reference (~56K tokens)</option>
+                                </select>
                             </div>
-                            <p class="setting-hint" style="margin-top: 6px;">Token impact: <span id="module-tokens-live" style="font-family: var(--font-mono)">Base + 0 = ~2080</span></p>
+                            <p class="setting-hint">Safe: ES3 rules + core patterns. Standard: example-driven with all modules (default). Expert: appends a 43-class API reference for maximum accuracy — requires a large context model.</p>
                         </fieldset>
 
                         <!-- Debug logging -->
@@ -384,6 +378,7 @@
     <script src="js/utils.js"></script>
     <script src="js/models.js"></script>
     <script src="js/scripts.js"></script>
+    <script src="js/system-prompt-api.js"></script>
     <script src="js/system-prompt.js"></script>
     <script src="js/chat.js"></script>
     <script src="js/app.js"></script>
