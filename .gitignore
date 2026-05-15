@@ -3,4 +3,4 @@ scripts/parse-webhelp.py
 .DS_Store
 plans/
 restore_debug_mode.command
-GEMINI.md
+GEMINI.md__aide_launcher__.jsx

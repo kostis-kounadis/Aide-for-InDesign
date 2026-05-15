@@ -251,52 +251,92 @@ function aideFileEntriesToJson(out) {
 }
 
 /**
- * Execute a local script file via app.doScript(File).
- * This preserves:
- *   - Relative #include paths (resolved from the file's own directory)
- *   - #targetengine directives (honoured by InDesign's engine bootstrapper)
- *   - .jsxbin (pre-compiled binary) execution
- * It matches the behaviour of the native InDesign Scripts panel exactly.
+ * Execute a local script file so that app.activeScript / $.fileName
+ * point to the script being run — identical to the native Scripts panel.
  *
- * @param {string} pathStr  Filesystem path to the .jsx / .js / .jsxbin / .applescript / .scpt file.
- * @returns {string} Result or error message back to CEP panel context.
+ * Why a temp launcher?
+ *   When app.doScript(file) is called from within a CEP panel's evalScript
+ *   context, app.activeScript still refers to host.jsx rather than the
+ *   target file. Many professional scripts (e.g. octopus) call
+ *   app.activeScript.fullName / app.activeScript.parent to find sibling
+ *   files or config folders — and fail if the path is wrong.
+ *
+ *   Writing a tiny .jsx launcher to disk and running THAT via app.doScript
+ *   makes InDesign set app.activeScript to the launcher's path before
+ *   executing. The launcher immediately calls $.evalFile on the real target,
+ *   which then correctly sets $.fileName and inherits the file context
+ *   (resolving relative #include paths and honouring #targetengine).
+ *
+ * @param {string} pathStr  Absolute filesystem path to the script.
+ * @returns {string} Result or 'ExtendScript Error: …' string.
  */
 function runLocalScriptFile(pathStr) {
+    var tempFile;
     try {
         var resolvedPath = aideResolveUserPath(String(pathStr || ''));
         if (!resolvedPath) return 'Error: No path provided.';
 
-        var f = new File(resolvedPath);
-        if (!f.exists) return 'Error: File not found: ' + resolvedPath;
+        var targetFile = new File(resolvedPath);
+        if (!targetFile.exists) return 'Error: File not found: ' + resolvedPath;
 
-        // Determine language from file extension
-        var lower = f.name.toLowerCase();
-        var lang;
-        if (/\.(jsx|js|jsxbin)$/.test(lower)) {
-            lang = ScriptLanguage.JAVASCRIPT;
-        } else if (/\.(applescript|scpt)$/.test(lower)) {
-            lang = ScriptLanguage.APPLESCRIPT_LANGUAGE;
-        } else {
-            lang = ScriptLanguage.JAVASCRIPT;
+        var lower = targetFile.name.toLowerCase();
+
+        // .jsxbin files are pre-compiled — run them directly.
+        // They have no #include or #targetengine to resolve.
+        if (/\.jsxbin$/.test(lower)) {
+            var result = app.doScript(targetFile, ScriptLanguage.JAVASCRIPT,
+                                      undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+            try {
+                if (app.documents.length > 0) app.activeDocument.recompose();
+            } catch (eR) { /* ignore */ }
+            return (result !== undefined && result !== null) ? String(result) : 'Script executed successfully.';
         }
 
-        // Execute via doScript so InDesign resolves #include and #targetengine
-        // relative to the script file's own location, just like the Scripts panel.
-        var result = app.doScript(f, lang, undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+        // For .applescript / .scpt run directly (no #include / #targetengine issue).
+        if (/\.(applescript|scpt)$/.test(lower)) {
+            app.doScript(targetFile, ScriptLanguage.APPLESCRIPT_LANGUAGE,
+                         undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+            return 'Script executed successfully.';
+        }
 
-        // Force InDesign to recompose layout after script execution
+        // --- .jsx / .js: write a temp launcher so app.activeScript is correct ---
+        //
+        // The launcher lives next to the target file so that any relative
+        // path assumptions in the target script still hold.
+        var launcherPath = targetFile.parent.fsName + '/__aide_launcher__.jsx';
+        tempFile = new File(launcherPath);
+
+        // Escape the target path for embedding in a string literal
+        var escapedPath = resolvedPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+
+        var launcherCode = '$.evalFile(File("' + escapedPath + '"));';
+        tempFile.open('w');
+        tempFile.encoding = 'UTF-8';
+        tempFile.write(launcherCode);
+        tempFile.close();
+
+        // Run the launcher — InDesign now sets app.activeScript = launcherFile,
+        // and inside, $.evalFile loads the real script with the correct file context.
+        var launchResult = app.doScript(tempFile, ScriptLanguage.JAVASCRIPT,
+                                        undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+
+        // Clean up launcher
+        try { tempFile.remove(); } catch (eClean) { /* ignore */ }
+
+        // Recompose layout
         try {
-            if (app.documents.length > 0) {
-                app.activeDocument.recompose();
-            }
+            if (app.documents.length > 0) app.activeDocument.recompose();
         } catch (eRecompose) { /* ignore */ }
 
-        if (result !== undefined && result !== null) {
-            return String(result);
+        if (launchResult !== undefined && launchResult !== null) {
+            return String(launchResult);
         }
         return 'Script executed successfully.';
 
     } catch (e) {
+        // Always clean up the temp launcher on error
+        try { if (tempFile && tempFile.exists) tempFile.remove(); } catch (eClean2) { /* ignore */ }
+
         // Suppress user-cancel signals (e.g. dialog cancel buttons)
         if (e.message && (
             e.message.indexOf('cancel') !== -1 ||
@@ -308,6 +348,7 @@ function runLocalScriptFile(pathStr) {
         return 'ExtendScript Error: ' + e.name + ' at line ' + e.line + ' - ' + e.message;
     }
 }
+
 
 /**
  * Evaluates the generated string from the local LLM.
