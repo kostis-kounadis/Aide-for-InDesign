@@ -251,6 +251,65 @@ function aideFileEntriesToJson(out) {
 }
 
 /**
+ * Execute a local script file via app.doScript(File).
+ * This preserves:
+ *   - Relative #include paths (resolved from the file's own directory)
+ *   - #targetengine directives (honoured by InDesign's engine bootstrapper)
+ *   - .jsxbin (pre-compiled binary) execution
+ * It matches the behaviour of the native InDesign Scripts panel exactly.
+ *
+ * @param {string} pathStr  Filesystem path to the .jsx / .js / .jsxbin / .applescript / .scpt file.
+ * @returns {string} Result or error message back to CEP panel context.
+ */
+function runLocalScriptFile(pathStr) {
+    try {
+        var resolvedPath = aideResolveUserPath(String(pathStr || ''));
+        if (!resolvedPath) return 'Error: No path provided.';
+
+        var f = new File(resolvedPath);
+        if (!f.exists) return 'Error: File not found: ' + resolvedPath;
+
+        // Determine language from file extension
+        var lower = f.name.toLowerCase();
+        var lang;
+        if (/\.(jsx|js|jsxbin)$/.test(lower)) {
+            lang = ScriptLanguage.JAVASCRIPT;
+        } else if (/\.(applescript|scpt)$/.test(lower)) {
+            lang = ScriptLanguage.APPLESCRIPT_LANGUAGE;
+        } else {
+            lang = ScriptLanguage.JAVASCRIPT;
+        }
+
+        // Execute via doScript so InDesign resolves #include and #targetengine
+        // relative to the script file's own location, just like the Scripts panel.
+        var result = app.doScript(f, lang, undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+
+        // Force InDesign to recompose layout after script execution
+        try {
+            if (app.documents.length > 0) {
+                app.activeDocument.recompose();
+            }
+        } catch (eRecompose) { /* ignore */ }
+
+        if (result !== undefined && result !== null) {
+            return String(result);
+        }
+        return 'Script executed successfully.';
+
+    } catch (e) {
+        // Suppress user-cancel signals (e.g. dialog cancel buttons)
+        if (e.message && (
+            e.message.indexOf('cancel') !== -1 ||
+            e.message.indexOf('Cancel') !== -1 ||
+            e.number === 65536
+        )) {
+            return 'Script executed successfully.';
+        }
+        return 'ExtendScript Error: ' + e.name + ' at line ' + e.line + ' - ' + e.message;
+    }
+}
+
+/**
  * Evaluates the generated string from the local LLM.
  * Wraps execution in an undo group so the user can Cmd+Z to revert.
  * @param {string} codeString The raw ExtendScript from Ollama or remote API.

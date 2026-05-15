@@ -798,6 +798,49 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     }
 
+    /**
+     * Execute a local script file on disk by path using app.doScript.
+     * This preserves #include relative paths and #targetengine directives,
+     * matching the behaviour of the native InDesign Scripts panel.
+     * Used for all Local / Favs / Sets run actions.
+     *
+     * @param {string}      path       Absolute filesystem path to the script
+     * @param {HTMLElement} triggerBtn The button that was clicked (may be null)
+     * @param {object}      [opts]     { launcherCard }
+     */
+    function executeLocalFile(path, triggerBtn, opts) {
+        opts = opts || {};
+        if (!csInterface) {
+            showExecResult(triggerBtn, false, 'No InDesign connection', opts.launcherCard);
+            return;
+        }
+
+        const scriptCall = `runLocalScriptFile(${JSON.stringify(path)})`;
+
+        if (triggerBtn) {
+            triggerBtn.textContent = '⏳';
+            triggerBtn.disabled = true;
+        }
+
+        evalScriptSafe(scriptCall, ({ success, result, error }) => {
+            const isError = !success;
+            const message = success ? result : error;
+
+            if (triggerBtn) {
+                triggerBtn.disabled = false;
+                triggerBtn.textContent = isError ? '✕ Failed' : '▶';
+                setTimeout(() => { if (triggerBtn) triggerBtn.textContent = '▶'; }, 2000);
+            }
+
+            showExecResult(triggerBtn, !isError, message, opts.launcherCard);
+
+            if (isError) {
+                // Surface the error in the Chat panel; no AI auto-fix for local files
+                appendSystemErrorToChat(message);
+            }
+        });
+    }
+
     // 3.4: Decode %20 and other URL-encoded characters in filenames
     function cleanFileName(name) {
         try { return decodeURIComponent(name); }
@@ -1254,7 +1297,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="fav-script-row-icon icon-svg" aria-hidden="true">${fileIconSvg}</span>
                         <span class="tree-label">${esc(name)}</span>
                         <div class="tree-actions">
-                            ${!isBin ? `<button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${enc(p)}" title="Run script">${runIconSvg}</button>` : ''}
+                            <button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${enc(p)}" title="Run script">${runIconSvg}</button>
                             <button type="button" class="tree-overflow-btn" data-action="tree-overflow" data-enc-path="${enc(p)}" data-name="${esc(name)}" data-is-fav="true" data-is-hidden="false" data-is-bin="${isBin}">⋯</button>
                         </div>
                     </div>`;
@@ -1355,12 +1398,8 @@ document.addEventListener('DOMContentLoaded', () => {
         hideTreeOverflowMenu();
 
         if (action === 'run') {
-            if (isBin) return;
             if (!isAllowedLocalScriptPath(path)) return;
-            loadLocalFileContent(path, (code) => {
-                if (code.indexOf('Error') === 0) { alert(code); return; }
-                executeCode(code, null, { failedCode: code });
-            });
+            executeLocalFile(path, null);
         }
         if (action === 'fav') {
             AideScripts.toggleLocalFavorite(path);
@@ -1519,14 +1558,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = e.target.closest('.script-row');
             if (!row) return;
             if (e.target.closest('.tree-run-btn') || e.target.closest('.tree-overflow-btn')) return;
-            if (row.dataset.isBin === 'true') return;
             const encPath = row.dataset.path || '';
             const path = getDecodedPath(encPath);
             if (!path || !isAllowedLocalScriptPath(path)) return;
-            loadLocalFileContent(path, (code) => {
-                if (code.indexOf('Error') === 0) { alert(code); return; }
-                executeCode(code, null, { failedCode: code });
-            });
+            executeLocalFile(path, null);
         });
     }
 
@@ -1935,10 +1970,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!localPath || !isAllowedLocalScriptPath(localPath)) return;
             btn.classList.add('pulse');
             setTimeout(() => btn.classList.remove('pulse'), 300);
-            loadLocalFileContent(localPath, (code) => {
-                if (code.indexOf('Error') === 0) { alert(code); return; }
-                executeCode(code, btn, { failedCode: code });
-            });
+            executeLocalFile(localPath, btn);
             return;
         }
 
@@ -2049,14 +2081,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 runBtn.classList.add('pulse');
                 setTimeout(() => runBtn.classList.remove('pulse'), 300);
             }
-            loadLocalFileContent(localPath, (code) => {
-                if (code.indexOf('Error') === 0) {
-                    alert(code);
-                    return;
-                }
-                const card = btn.closest('.script-card');
-                executeCode(code, btn, { launcherCard: card, failedCode: code });
-            });
+            const card = btn.closest('.script-card');
+            executeLocalFile(localPath, btn, { launcherCard: card });
         }
         if (action === 'view-local' && localPath) {
             const card = btn.closest('.script-card');
