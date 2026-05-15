@@ -1127,7 +1127,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const raw = String(value || '');
             try { return decodeURIComponent(raw); } catch (e) { return raw.replace(/%20/g, ' '); }
         };
-        const q     = (dom.scriptsSearchBar.value || '').toLowerCase().trim();
+        const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
 
         if (localSetsData.length === 0 && !q) {
             dom.scriptsList.innerHTML = `<button class="create-set-full-btn" id="create-new-set-btn" style="margin-top:20px">Add New Set</button>`;
@@ -1221,7 +1221,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderFavsPanel() {
         const enc = p => encodeURIComponent(p);
         const esc = AideUtils.escapeHtml;
-        const q     = (dom.scriptsSearchBar.value || '').toLowerCase().trim();
+        const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
         const favs = Array.from(AideScripts.loadLocalFavorites());
         const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
         const fileIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>`;
@@ -1265,7 +1265,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // ── Step 5: Render the hierarchical tree for the Local subtab ──
     function renderLocalTreePanel() {
-        const q     = (dom.scriptsSearchBar.value || '').toLowerCase().trim();
+        const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
         AideScripts.renderScriptTree(
             dom.scriptsList,
             dom.scriptsEmpty,
@@ -1493,7 +1493,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function syncScriptsSearchClear() {
         if (!dom.scriptsSearchClear) return;
-        const has = !!(dom.scriptsSearchBar && dom.scriptsSearchBar.value && dom.scriptsSearchBar.value.trim());
+        const has = !!(dom.scriptsSearch && dom.scriptsSearch.value && dom.scriptsSearch.value.trim());
         dom.scriptsSearchClear.disabled = !has;
     }
 
@@ -1503,10 +1503,10 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     if (dom.scriptsSearchClear) {
         dom.scriptsSearchClear.addEventListener('click', () => {
-            dom.scriptsSearchBar.value = '';
+            dom.scriptsSearch.value = '';
             syncScriptsSearchClear();
             refreshScriptsList();
-            try { dom.scriptsSearchBar.focus(); } catch (e) { /* ignore */ }
+            try { dom.scriptsSearch.focus(); } catch (e) { /* ignore */ }
         });
         syncScriptsSearchClear();
     }
