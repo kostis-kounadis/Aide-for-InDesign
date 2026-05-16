@@ -4,3 +4,5 @@ scripts/parse-webhelp.py
 plans/
 restore_debug_mode.command
 GEMINI.md
+__aide_launcher__.jsx
+

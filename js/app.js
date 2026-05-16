@@ -512,6 +512,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // ──────────────── Send / Stop button helpers ────────────────
     const SEND_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polygon points="5 3 19 12 5 21 5 3"/></svg>';
     const STOP_SVG = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2" ry="2" fill="currentColor" stroke="none"/></svg>';
+    const PLAY_ICON_SVG = '<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>';
 
     function setSendState() {
         dom.sendBtn.innerHTML = SEND_SVG;
@@ -784,16 +785,74 @@ document.addEventListener('DOMContentLoaded', () => {
 
             if (triggerBtn) {
                 triggerBtn.disabled = false;
-                triggerBtn.textContent = isError ? '✕ Failed' : '✓ Done';
-                // Restore correct label — tree-run-btn uses '▶', chat buttons use '▶ Run'
-                const origLabel = triggerBtn.classList.contains('tree-run-btn') ? '▶' : '▶ Run';
-                setTimeout(() => { triggerBtn.textContent = origLabel; }, 2000);
+                
+                const isTreeBtn = triggerBtn.classList.contains('tree-run-btn');
+                triggerBtn.textContent = isError ? (isTreeBtn ? '✕' : '✕ Failed') : (isTreeBtn ? '✓' : '✓ Done');
+                if (isTreeBtn) triggerBtn.classList.add(isError ? 'state-error' : 'state-success');
+                
+                setTimeout(() => {
+                    if (isTreeBtn) {
+                        triggerBtn.classList.remove('state-error', 'state-success');
+                        triggerBtn.innerHTML = PLAY_ICON_SVG;
+                    } else {
+                        triggerBtn.textContent = '▶ Run';
+                    }
+                }, 2000);
             }
 
             showExecResult(triggerBtn, !isError, message, opts.launcherCard);
 
             if (isError) {
                 offerAutoFix(message, opts.failedCode != null ? opts.failedCode : code);
+            }
+        });
+    }
+
+    /**
+     * Execute a local script file on disk by path using app.doScript.
+     * This preserves #include relative paths and #targetengine directives,
+     * matching the behaviour of the native InDesign Scripts panel.
+     * Used for all Local / Favs / Sets run actions.
+     *
+     * @param {string}      path       Absolute filesystem path to the script
+     * @param {HTMLElement} triggerBtn The button that was clicked (may be null)
+     * @param {object}      [opts]     { launcherCard }
+     */
+    function executeLocalFile(path, triggerBtn, opts) {
+        opts = opts || {};
+        if (!csInterface) {
+            showExecResult(triggerBtn, false, 'No InDesign connection', opts.launcherCard);
+            return;
+        }
+
+        const scriptCall = `runLocalScriptFile(${JSON.stringify(path)})`;
+
+        if (triggerBtn) {
+            triggerBtn.textContent = '⏳';
+            triggerBtn.disabled = true;
+        }
+
+        evalScriptSafe(scriptCall, ({ success, result, error }) => {
+            const isError = !success;
+            const message = success ? result : error;
+
+            if (triggerBtn) {
+                triggerBtn.disabled = false;
+                triggerBtn.textContent = isError ? '✕' : '✓';
+                triggerBtn.classList.add(isError ? 'state-error' : 'state-success');
+                setTimeout(() => { 
+                    if (triggerBtn) {
+                        triggerBtn.classList.remove('state-error', 'state-success');
+                        triggerBtn.innerHTML = PLAY_ICON_SVG; 
+                    }
+                }, 2000);
+            }
+
+            showExecResult(triggerBtn, !isError, message, opts.launcherCard);
+
+            if (isError) {
+                // Surface the error in the Chat panel; no AI auto-fix for local files
+                appendSystemErrorToChat(message);
             }
         });
     }
@@ -807,25 +866,22 @@ document.addEventListener('DOMContentLoaded', () => {
     // 3.5: Replace toast injection in script cards with CSS flash feedback.
     // Error details are sent to the Chat panel as a system message.
     function showExecResult(nearEl, success, message, launcherCard) {
-        if (launcherCard) {
-            // Remove any old toasts (legacy cleanup)
-            const prev = launcherCard.querySelector('.script-exec-toast');
-            if (prev) prev.remove();
-
-            if (success) {
-                // Brief green border flash on success
-                launcherCard.classList.add('exec-flash-success');
-                setTimeout(() => launcherCard.classList.remove('exec-flash-success'), 1200);
-            } else {
-                // Brief red border flash on error
-                launcherCard.classList.add('exec-flash-error');
-                setTimeout(() => launcherCard.classList.remove('exec-flash-error'), 1800);
-                // Send detailed error to Chat panel as a system message
+        // 1. Try to find a row/card container for visual feedback (flash/shake)
+        const container = launcherCard || (nearEl ? nearEl.closest('.script-row, .set-script-row, .script-card') : null);
+        
+        if (container) {
+            const cls = success ? 'exec-flash-success' : 'exec-flash-error';
+            container.classList.add(cls);
+            setTimeout(() => container.classList.remove(cls), success ? 1200 : 1800);
+            
+            if (!success) {
+                // If it's a card in the Aide tab, it might not have an error display, so use chat
                 appendSystemErrorToChat(message);
             }
             return;
         }
 
+        // 2. Fallback to chat message code block (for generated scripts)
         const codeBlock = nearEl ? nearEl.closest('.msg-code-block') : null;
         if (!codeBlock) return;
 
@@ -1120,7 +1176,7 @@ document.addEventListener('DOMContentLoaded', () => {
     function renderSetsPanel() {
         const enc = p => encodeURIComponent(p);
         const esc = AideUtils.escapeHtml;
-        const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
+
         const fileIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>`;
         const folderIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M3 7a2 2 0 0 1 2-2h5l2 2h7a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>`;
         const decodeLabel = (value) => {
@@ -1146,7 +1202,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     const scriptRows = (s.scripts || []).map(p => {
                         const name = decodeLabel(p.split('/').pop().split('\\').pop());
                         return `<div class="set-script-row">
-                            <button type="button" class="tree-run-btn" data-action="run-local" data-enc-path="${enc(p)}" title="Run">${runIconSvg}</button>
+                            <button type="button" class="tree-run-btn" data-action="run-local" data-enc-path="${enc(p)}" title="Run">${PLAY_ICON_SVG}</button>
                             <span class="set-script-row-icon icon-svg" aria-hidden="true">${fileIconSvg}</span>
                             <span>${esc(name)}</span>
                         </div>`;
@@ -1223,7 +1279,7 @@ document.addEventListener('DOMContentLoaded', () => {
         const esc = AideUtils.escapeHtml;
         const q     = (dom.scriptsSearch.value || '').toLowerCase().trim();
         const favs = Array.from(AideScripts.loadLocalFavorites());
-        const runIconSvg = `<svg viewBox="0 0 24 24" aria-hidden="true"><polygon points="8 5 19 12 8 19 8 5"/></svg>`;
+
         const fileIconSvg = `<svg viewBox="0 0 24 24" class="icon-svg"><path d="M14 2H7a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V7z"/><polyline points="14 2 14 7 19 7"/></svg>`;
 
         if (favs.length === 0 && !q) {
@@ -1254,7 +1310,7 @@ document.addEventListener('DOMContentLoaded', () => {
                         <span class="fav-script-row-icon icon-svg" aria-hidden="true">${fileIconSvg}</span>
                         <span class="tree-label">${esc(name)}</span>
                         <div class="tree-actions">
-                            ${!isBin ? `<button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${enc(p)}" title="Run script">${runIconSvg}</button>` : ''}
+                            <button type="button" class="tree-run-btn" data-action="tree-run" data-enc-path="${enc(p)}" title="Run script">${PLAY_ICON_SVG}</button>
                             <button type="button" class="tree-overflow-btn" data-action="tree-overflow" data-enc-path="${enc(p)}" data-name="${esc(name)}" data-is-fav="true" data-is-hidden="false" data-is-bin="${isBin}">⋯</button>
                         </div>
                     </div>`;
@@ -1355,12 +1411,8 @@ document.addEventListener('DOMContentLoaded', () => {
         hideTreeOverflowMenu();
 
         if (action === 'run') {
-            if (isBin) return;
             if (!isAllowedLocalScriptPath(path)) return;
-            loadLocalFileContent(path, (code) => {
-                if (code.indexOf('Error') === 0) { alert(code); return; }
-                executeCode(code, null, { failedCode: code });
-            });
+            executeLocalFile(path, null);
         }
         if (action === 'fav') {
             AideScripts.toggleLocalFavorite(path);
@@ -1519,14 +1571,10 @@ document.addEventListener('DOMContentLoaded', () => {
             const row = e.target.closest('.script-row');
             if (!row) return;
             if (e.target.closest('.tree-run-btn') || e.target.closest('.tree-overflow-btn')) return;
-            if (row.dataset.isBin === 'true') return;
             const encPath = row.dataset.path || '';
             const path = getDecodedPath(encPath);
             if (!path || !isAllowedLocalScriptPath(path)) return;
-            loadLocalFileContent(path, (code) => {
-                if (code.indexOf('Error') === 0) { alert(code); return; }
-                executeCode(code, null, { failedCode: code });
-            });
+            executeLocalFile(path, null);
         });
     }
 
@@ -1935,10 +1983,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!localPath || !isAllowedLocalScriptPath(localPath)) return;
             btn.classList.add('pulse');
             setTimeout(() => btn.classList.remove('pulse'), 300);
-            loadLocalFileContent(localPath, (code) => {
-                if (code.indexOf('Error') === 0) { alert(code); return; }
-                executeCode(code, btn, { failedCode: code });
-            });
+            executeLocalFile(localPath, btn);
             return;
         }
 
@@ -2049,14 +2094,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 runBtn.classList.add('pulse');
                 setTimeout(() => runBtn.classList.remove('pulse'), 300);
             }
-            loadLocalFileContent(localPath, (code) => {
-                if (code.indexOf('Error') === 0) {
-                    alert(code);
-                    return;
-                }
-                const card = btn.closest('.script-card');
-                executeCode(code, btn, { launcherCard: card, failedCode: code });
-            });
+            const card = btn.closest('.script-card');
+            executeLocalFile(localPath, btn, { launcherCard: card });
         }
         if (action === 'view-local' && localPath) {
             const card = btn.closest('.script-card');

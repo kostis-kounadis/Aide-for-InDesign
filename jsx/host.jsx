@@ -251,6 +251,130 @@ function aideFileEntriesToJson(out) {
 }
 
 /**
+ * Execute a local script file on disk by path.
+ *
+ * Two execution strategies depending on script content:
+ *
+ * 1. DIRECT (preprocessor scripts):
+ *    Scripts that use #targetengine, #include, or #includepath are run via
+ *    app.doScript(file) directly, because $.evalFile() skips the ExtendScript
+ *    preprocessor entirely. Uses UndoModes.AUTO_UNDO to avoid conflicts with
+ *    #targetengine persistent engines in the nested CEP context.
+ *
+ * 2. LAUNCHER (plain scripts):
+ *    Scripts without preprocessor directives are run via a temporary
+ *    __aide_launcher__.jsx file placed next to the target. This ensures
+ *    app.activeScript points to the correct directory, fixing scripts that
+ *    rely on relative path resolution via app.activeScript.parent.
+ *
+ * @param {string} pathStr  Absolute filesystem path to the script.
+ * @returns {string} Result or 'ExtendScript Error: …' string.
+ */
+function runLocalScriptFile(pathStr) {
+    var tempFile;
+    try {
+        var resolvedPath = aideResolveUserPath(String(pathStr || ''));
+
+        if (!resolvedPath) return 'Error: No path provided.';
+
+        var targetFile = new File(resolvedPath);
+        if (!targetFile.exists) return 'Error: File not found: ' + resolvedPath;
+
+        var lower = targetFile.name.toLowerCase();
+
+        // .jsxbin files are pre-compiled — run them directly.
+        // They have no #include or #targetengine to resolve.
+        if (/\.jsxbin$/.test(lower)) {
+            var result = app.doScript(targetFile, ScriptLanguage.JAVASCRIPT,
+                                      undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+            try {
+                if (app.documents.length > 0) app.activeDocument.recompose();
+            } catch (eR) { /* ignore */ }
+            return (result !== undefined && result !== null) ? String(result) : 'Script executed successfully.';
+        }
+
+        // For .applescript / .scpt run directly (no #include / #targetengine issue).
+        if (/\.(applescript|scpt)$/.test(lower)) {
+            app.doScript(targetFile, ScriptLanguage.APPLESCRIPT_LANGUAGE,
+                         undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+            return 'Script executed successfully.';
+        }
+
+        // --- .jsx / .js execution strategy ---
+        // Pre-scan for preprocessor directives using a SEPARATE File object.
+        var usesPreprocessor = false;
+        try {
+            var scanFile = new File(resolvedPath);
+            scanFile.open('r');
+            scanFile.encoding = 'UTF-8';
+            var head = scanFile.read(4096);
+            scanFile.close();
+            if (head) {
+                usesPreprocessor = /^\s*#(targetengine|include|includepath)\b/m.test(head);
+            }
+        } catch (eScan) {
+            // If we can't read the file, fall through to direct execution
+            // as the safer default (preserves preprocessor directives).
+            usesPreprocessor = true;
+        }
+
+        var launchResult;
+
+        if (usesPreprocessor) {
+            // ── Direct execution: preserves #targetengine, #include, #includepath ──
+            // Use AUTO_UNDO (not FAST_ENTIRE_SCRIPT) because #targetengine scripts
+            // may conflict with forced undo grouping from a nested CEP context.
+            launchResult = app.doScript(targetFile, ScriptLanguage.JAVASCRIPT,
+                                        undefined, UndoModes.AUTO_UNDO);
+        } else {
+            // ── Launcher execution: fixes app.activeScript context ──
+            // The launcher lives next to the target file so that any relative
+            // path assumptions in the target script still hold.
+            var launcherPath = targetFile.parent.fsName + '/__aide_launcher__.jsx';
+            tempFile = new File(launcherPath);
+
+            var escapedPath = resolvedPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            var launcherCode = '$.evalFile(File("' + escapedPath + '"));';
+            tempFile.open('w');
+            tempFile.encoding = 'UTF-8';
+            tempFile.write(launcherCode);
+            tempFile.close();
+
+            launchResult = app.doScript(tempFile, ScriptLanguage.JAVASCRIPT,
+                                        undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+        }
+
+        // Clean up launcher
+        try { tempFile.remove(); } catch (eClean) { /* ignore */ }
+
+        // Recompose layout
+        try {
+            if (app.documents.length > 0) app.activeDocument.recompose();
+        } catch (eRecompose) { /* ignore */ }
+
+        if (launchResult !== undefined && launchResult !== null) {
+            return String(launchResult);
+        }
+        return 'Script executed successfully.';
+
+    } catch (e) {
+        // Always clean up the temp launcher on error
+        try { if (tempFile && tempFile.exists) tempFile.remove(); } catch (eClean2) { /* ignore */ }
+
+        // Suppress user-cancel signals (e.g. dialog cancel buttons)
+        if (e.message && (
+            e.message.indexOf('cancel') !== -1 ||
+            e.message.indexOf('Cancel') !== -1 ||
+            e.number === 65536
+        )) {
+            return 'Script executed successfully.';
+        }
+        return 'ExtendScript Error: ' + e.name + ' at line ' + e.line + ' - ' + e.message;
+    }
+}
+
+
+/**
  * Evaluates the generated string from the local LLM.
  * Wraps execution in an undo group so the user can Cmd+Z to revert.
  * @param {string} codeString The raw ExtendScript from Ollama or remote API.

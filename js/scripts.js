@@ -489,16 +489,14 @@ const AideScripts = (() => {
             row.style.setProperty('--tree-depth', depth);
             row.title = decodedPath;
 
-            if (!isBin) {
-                const runBtn = document.createElement('button');
-                runBtn.type = 'button';
-                runBtn.className = 'tree-run-btn';
-                runBtn.dataset.action   = 'tree-run';
-                runBtn.dataset.encPath  = ep;
-                runBtn.title = 'Run';
-                runBtn.innerHTML = _SVG.run;
-                row.appendChild(runBtn);
-            }
+            const runBtn = document.createElement('button');
+            runBtn.type = 'button';
+            runBtn.className = 'tree-run-btn';
+            runBtn.dataset.action   = 'tree-run';
+            runBtn.dataset.encPath  = ep;
+            runBtn.title = 'Run';
+            runBtn.innerHTML = _SVG.run;
+            row.appendChild(runBtn);
 
             const iconSpan = document.createElement('span');
             iconSpan.className = 'script-row-icon icon-svg';

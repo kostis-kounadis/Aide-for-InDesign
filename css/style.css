@@ -750,19 +750,40 @@ body {
     flex-shrink: 0;
 }
 /* 3.5: Subtle execution flash on script cards (replaces intrusive toasts) */
-.script-card.exec-flash-success {
+.script-card.exec-flash-success,
+.script-row.exec-flash-success,
+.set-script-row.exec-flash-success {
     animation: flashBorderGreen 1.2s ease-out;
 }
-.script-card.exec-flash-error {
-    animation: flashBorderRed 1.8s ease-out;
+.script-card.exec-flash-error,
+.script-row.exec-flash-error,
+.set-script-row.exec-flash-error {
+    animation: flashBorderRed 1.8s ease-out, shake 0.3s ease-in-out;
 }
+
 @keyframes flashBorderGreen {
-    0%   { border-color: var(--success); box-shadow: 0 0 6px rgba(76,175,80,0.3); }
-    100% { border-color: var(--border);  box-shadow: none; }
+    0%   { border-color: var(--success); box-shadow: 0 0 8px rgba(76,175,80,0.4); background: var(--success-dim); }
+    100% { border-color: var(--border);  box-shadow: none; background: transparent; }
 }
 @keyframes flashBorderRed {
-    0%   { border-color: var(--danger); box-shadow: 0 0 6px rgba(224,82,82,0.3); }
-    100% { border-color: var(--border); box-shadow: none; }
+    0%   { border-color: var(--danger); box-shadow: 0 0 8px rgba(224,82,82,0.4); background: var(--danger-dim); }
+    100% { border-color: var(--border); box-shadow: none; background: transparent; }
+}
+@keyframes shake {
+    0%, 100% { transform: translateX(0); }
+    20%, 60% { transform: translateX(-3px); }
+    40%, 80% { transform: translateX(3px); }
+}
+
+.tree-run-btn.state-error {
+    background: var(--danger) !important;
+    color: #fff !important;
+    border-color: var(--danger) !important;
+}
+.tree-run-btn.state-success {
+    background: var(--success) !important;
+    color: #fff !important;
+    border-color: var(--success) !important;
 }
 .script-card-path {
     font-size: 9px;
