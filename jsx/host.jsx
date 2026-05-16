@@ -251,21 +251,21 @@ function aideFileEntriesToJson(out) {
 }
 
 /**
- * Execute a local script file so that app.activeScript / $.fileName
- * point to the script being run — identical to the native Scripts panel.
+ * Execute a local script file on disk by path.
  *
- * Why a temp launcher?
- *   When app.doScript(file) is called from within a CEP panel's evalScript
- *   context, app.activeScript still refers to host.jsx rather than the
- *   target file. Many professional scripts (e.g. octopus) call
- *   app.activeScript.fullName / app.activeScript.parent to find sibling
- *   files or config folders — and fail if the path is wrong.
+ * Two execution strategies depending on script content:
  *
- *   Writing a tiny .jsx launcher to disk and running THAT via app.doScript
- *   makes InDesign set app.activeScript to the launcher's path before
- *   executing. The launcher immediately calls $.evalFile on the real target,
- *   which then correctly sets $.fileName and inherits the file context
- *   (resolving relative #include paths and honouring #targetengine).
+ * 1. DIRECT (preprocessor scripts):
+ *    Scripts that use #targetengine, #include, or #includepath are run via
+ *    app.doScript(file) directly, because $.evalFile() skips the ExtendScript
+ *    preprocessor entirely. Uses UndoModes.AUTO_UNDO to avoid conflicts with
+ *    #targetengine persistent engines in the nested CEP context.
+ *
+ * 2. LAUNCHER (plain scripts):
+ *    Scripts without preprocessor directives are run via a temporary
+ *    __aide_launcher__.jsx file placed next to the target. This ensures
+ *    app.activeScript points to the correct directory, fixing scripts that
+ *    rely on relative path resolution via app.activeScript.parent.
  *
  * @param {string} pathStr  Absolute filesystem path to the script.
  * @returns {string} Result or 'ExtendScript Error: …' string.
@@ -274,6 +274,7 @@ function runLocalScriptFile(pathStr) {
     var tempFile;
     try {
         var resolvedPath = aideResolveUserPath(String(pathStr || ''));
+
         if (!resolvedPath) return 'Error: No path provided.';
 
         var targetFile = new File(resolvedPath);
@@ -299,26 +300,49 @@ function runLocalScriptFile(pathStr) {
             return 'Script executed successfully.';
         }
 
-        // --- .jsx / .js: write a temp launcher so app.activeScript is correct ---
-        //
-        // The launcher lives next to the target file so that any relative
-        // path assumptions in the target script still hold.
-        var launcherPath = targetFile.parent.fsName + '/__aide_launcher__.jsx';
-        tempFile = new File(launcherPath);
+        // --- .jsx / .js execution strategy ---
+        // Pre-scan for preprocessor directives using a SEPARATE File object.
+        var usesPreprocessor = false;
+        try {
+            var scanFile = new File(resolvedPath);
+            scanFile.open('r');
+            scanFile.encoding = 'UTF-8';
+            var head = scanFile.read(4096);
+            scanFile.close();
+            if (head) {
+                usesPreprocessor = /^\s*#(targetengine|include|includepath)\b/m.test(head);
+            }
+        } catch (eScan) {
+            // If we can't read the file, fall through to direct execution
+            // as the safer default (preserves preprocessor directives).
+            usesPreprocessor = true;
+        }
 
-        // Escape the target path for embedding in a string literal
-        var escapedPath = resolvedPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+        var launchResult;
 
-        var launcherCode = '$.evalFile(File("' + escapedPath + '"));';
-        tempFile.open('w');
-        tempFile.encoding = 'UTF-8';
-        tempFile.write(launcherCode);
-        tempFile.close();
+        if (usesPreprocessor) {
+            // ── Direct execution: preserves #targetengine, #include, #includepath ──
+            // Use AUTO_UNDO (not FAST_ENTIRE_SCRIPT) because #targetengine scripts
+            // may conflict with forced undo grouping from a nested CEP context.
+            launchResult = app.doScript(targetFile, ScriptLanguage.JAVASCRIPT,
+                                        undefined, UndoModes.AUTO_UNDO);
+        } else {
+            // ── Launcher execution: fixes app.activeScript context ──
+            // The launcher lives next to the target file so that any relative
+            // path assumptions in the target script still hold.
+            var launcherPath = targetFile.parent.fsName + '/__aide_launcher__.jsx';
+            tempFile = new File(launcherPath);
 
-        // Run the launcher — InDesign now sets app.activeScript = launcherFile,
-        // and inside, $.evalFile loads the real script with the correct file context.
-        var launchResult = app.doScript(tempFile, ScriptLanguage.JAVASCRIPT,
+            var escapedPath = resolvedPath.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+            var launcherCode = '$.evalFile(File("' + escapedPath + '"));';
+            tempFile.open('w');
+            tempFile.encoding = 'UTF-8';
+            tempFile.write(launcherCode);
+            tempFile.close();
+
+            launchResult = app.doScript(tempFile, ScriptLanguage.JAVASCRIPT,
                                         undefined, UndoModes.FAST_ENTIRE_SCRIPT, 'Run Script');
+        }
 
         // Clean up launcher
         try { tempFile.remove(); } catch (eClean) { /* ignore */ }
